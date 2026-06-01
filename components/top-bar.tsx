@@ -17,8 +17,9 @@ export function TopBar({ coins = 0, transparent = false }: { coins?: number; tra
         borderBottom: transparent ? 'none' : '1px solid rgba(255,255,255,0.05)'
       }}
     >
-      <Link href="/" className="text-xl font-black tracking-tight text-brand-gradient">
-        DramaFlash
+      <Link href="/" className="flex items-center gap-2">
+        <img src="/favicon.png" alt="BingeGo" className="w-7 h-7 rounded-md" />
+        <span className="text-xl font-black tracking-tight text-brand-gradient">BingeGo</span>
       </Link>
       <div className="flex items-center gap-3">
         <Link

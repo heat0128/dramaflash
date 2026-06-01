@@ -1,14 +1,19 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { SwRegister } from '@/components/sw-register'
 
 export const metadata: Metadata = {
-  title: 'DramaFlash · Short Dramas',
+  title: 'BingeGo · Short Dramas, Endless Stories',
   description: 'Stream the hottest short dramas. Watch anywhere, anytime.',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png'
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'DramaFlash'
+    title: 'BingeGo'
   }
 }
 
@@ -26,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <div className="app-shell">{children}</div>
+        <SwRegister />
       </body>
     </html>
   )

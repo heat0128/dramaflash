@@ -22,6 +22,8 @@ export type Series = {
   free_episodes: number
   coin_price: number
   is_published: boolean
+  is_featured?: boolean
+  featured_order?: number
   view_count: number
   like_count: number
   created_at: string

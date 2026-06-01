@@ -26,6 +26,14 @@ export function SeriesEditor({
     setMsg(next ? 'Published live' : 'Unpublished')
   }
 
+  const toggleFeatured = async () => {
+    const supabase = createClient()
+    const next = !series.is_featured
+    await supabase.from('series').update({ is_featured: next }).eq('id', series.id)
+    setSeries({ ...series, is_featured: next })
+    setMsg(next ? 'Added to Recommended' : 'Removed from Recommended')
+  }
+
   const updateField = async (field: keyof Series, value: any) => {
     const supabase = createClient()
     await supabase.from('series').update({ [field]: value }).eq('id', series.id)
@@ -99,12 +107,20 @@ export function SeriesEditor({
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <h1 className="text-2xl font-extrabold">{series.title}</h1>
-        <button onClick={togglePublish}
-          className={`px-4 py-2 rounded-xl text-sm font-bold ${
-            series.is_published ? 'bg-green-600' : 'bg-white/10'
-          }`}>
-          {series.is_published ? 'Published' : 'Publish'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={toggleFeatured}
+            className={`px-4 py-2 rounded-xl text-sm font-bold ${
+              series.is_featured ? 'bg-brand-gold text-black' : 'bg-white/10'
+            }`}>
+            {series.is_featured ? '★ Recommended' : '☆ Recommend'}
+          </button>
+          <button onClick={togglePublish}
+            className={`px-4 py-2 rounded-xl text-sm font-bold ${
+              series.is_published ? 'bg-green-600' : 'bg-white/10'
+            }`}>
+            {series.is_published ? 'Published' : 'Publish'}
+          </button>
+        </div>
       </div>
 
       {msg && <div className="text-sm text-brand-orange">{msg}</div>}

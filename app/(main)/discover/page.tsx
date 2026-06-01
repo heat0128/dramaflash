@@ -15,6 +15,13 @@ export default async function DiscoverPage() {
     .order('view_count', { ascending: false })
     .limit(1)
 
+  const { data: featured } = await supabase
+    .from('series').select('*')
+    .eq('is_published', true)
+    .eq('is_featured', true)
+    .order('featured_order')
+    .limit(9)
+
   const { data: forYou } = await supabase
     .from('series').select('*')
     .eq('is_published', true)
@@ -66,6 +73,13 @@ export default async function DiscoverPage() {
                 </Link>
               ))}
             </div>
+          </>
+        )}
+
+        {featured && featured.length > 0 && (
+          <>
+            <SectionHeader title="⭐ Recommended" />
+            <Grid items={featured} />
           </>
         )}
 

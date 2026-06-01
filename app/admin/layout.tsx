@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen pb-12" style={{ paddingTop: 'max(env(safe-area-inset-top), 16px)' }}>
       <header className="px-4 py-4 flex items-center justify-between border-b border-white/5">
-        <div className="text-lg font-extrabold text-brand-gradient">Admin · DramaFlash</div>
+        <div className="text-lg font-extrabold text-brand-gradient">Admin · BingeGo</div>
         <Link href="/" className="text-xs opacity-60">← Back to site</Link>
       </header>
       <nav className="flex border-b border-white/5 px-2">

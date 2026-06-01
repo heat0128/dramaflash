@@ -59,9 +59,9 @@ export function InstallPrompt() {
           onClick={e => e.stopPropagation()}
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 28px)' }}>
           <div className="flex items-center gap-3.5 mb-5">
-            <div className="w-14 h-14 rounded-2xl bg-brand-gradient flex items-center justify-center text-2xl font-black">D</div>
+            <img src="/favicon.png" alt="BingeGo" className="w-14 h-14 rounded-2xl" />
             <div>
-              <div className="text-lg font-extrabold">Install DramaFlash</div>
+              <div className="text-lg font-extrabold">Install BingeGo</div>
               <div className="text-xs opacity-60">Add to Home Screen in 3 steps</div>
             </div>
           </div>
@@ -79,9 +79,9 @@ export function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[456px] bg-[#141414]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 z-[50] shadow-2xl">
-      <div className="w-12 h-12 rounded-xl bg-brand-gradient flex items-center justify-center text-xl font-black flex-shrink-0">D</div>
+      <img src="/favicon.png" alt="BingeGo" className="w-12 h-12 rounded-xl flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-bold">Install DramaFlash</div>
+        <div className="text-sm font-bold">Install BingeGo</div>
         <div className="text-[11px] opacity-60 leading-tight">Full-screen, app-like experience</div>
       </div>
       <button onClick={dismiss} className="opacity-50 px-2 text-lg">×</button>

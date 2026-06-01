@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex flex-col px-6 pt-20"
       style={{ paddingTop: 'max(env(safe-area-inset-top), 60px)' }}>
-      <h1 className="text-3xl font-extrabold mb-2 text-brand-gradient">DramaFlash</h1>
+      <img src="/logo.png" alt="BingeGo" className="w-44 h-44 object-contain mb-2 rounded-2xl" />
       <p className="text-sm opacity-60 mb-8">
         {mode === 'signin' ? 'Welcome back' : 'Create your account to start watching'}
       </p>
