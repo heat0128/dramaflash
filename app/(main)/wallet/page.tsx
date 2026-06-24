@@ -3,6 +3,7 @@ import { getCurrentUser, isVipActive } from '@/lib/auth'
 import { TopBar } from '@/components/top-bar'
 import { ToastProvider } from '@/components/toast'
 import { CheckoutButton } from '@/components/checkout-button'
+import { EarnCoins } from '@/components/earn-coins'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,25 @@ export default async function WalletPage() {
 
   const { data: plans } = await supabase
     .from('subscription_plans').select('*').eq('is_active', true).order('display_order')
+
+  // Ad-reward settings + today's count
+  const { data: settingsRows } = await supabase.from('app_settings').select('key, value')
+  const settings: Record<string, string> = {}
+  for (const r of settingsRows || []) settings[r.key] = r.value
+  const adEnabled = settings.ad_enabled === 'true'
+  const adReward = parseInt(settings.ad_reward_coins || '10', 10)
+  const adLimit = parseInt(settings.ad_daily_limit || '5', 10)
+
+  let watchedToday = 0
+  if (user && adEnabled) {
+    const startOfDay = new Date()
+    startOfDay.setUTCHours(0, 0, 0, 0)
+    const { count } = await supabase.from('ad_rewards')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', startOfDay.toISOString())
+    watchedToday = count || 0
+  }
 
   return (
     <ToastProvider>
@@ -47,6 +67,20 @@ export default async function WalletPage() {
             )}
           </div>
         </div>
+
+        {user && adEnabled && (
+          <>
+            <SectionHeader title="Earn Free Coins" />
+            <div className="px-4">
+              <EarnCoins
+                rewardCoins={adReward}
+                dailyLimit={adLimit}
+                watchedToday={watchedToday}
+                enabled={adEnabled}
+              />
+            </div>
+          </>
+        )}
 
         <SectionHeader title="Subscribe to VIP · Watch unlimited" />
         <div className="px-4 space-y-2.5">
