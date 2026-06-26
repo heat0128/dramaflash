@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Heart, Bookmark, Share2, List, Lock } from 'lucide-react'
+import { Heart, Bookmark, Share2, List, Lock, Captions } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/toast'
+import { langLabel } from '@/lib/languages'
+import { getSavedLang } from '@/lib/i18n'
 import clsx from 'clsx'
 import type { Episode, Series } from '@/lib/types'
 
@@ -125,11 +127,50 @@ function Slide({
   const [favorited, setFavorited] = useState(false)
   const [showPaywall, setShowPaywall] = useState(!isUnlocked)
   const [paused, setPaused] = useState(false)
+  const [videoSrc, setVideoSrc] = useState<string | null>(null)
+  const [subs, setSubs] = useState<{ lang: string; storage_path: string }[]>([])
+  const [subMenu, setSubMenu] = useState(false)
+  const [activeSub, setActiveSub] = useState<string | null>(null)
   const slideRef = useRef<HTMLDivElement>(null)
   const lastTapRef = useRef(0)
   const { show: toast } = useToast()
 
   useEffect(() => { setShowPaywall(!isUnlocked) }, [isUnlocked])
+
+  // Fetch a playable (signed) video URL once unlocked
+  useEffect(() => {
+    if (!isUnlocked || videoSrc) return
+    fetch('/api/video-url', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ episodeId: episode.id })
+    })
+      .then(r => r.json())
+      .then(j => { if (j.url) setVideoSrc(j.url) })
+      .catch(() => {})
+  }, [isUnlocked, videoSrc, episode.id])
+
+  // Load subtitle list for this episode
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('subtitles').select('lang, storage_path').eq('episode_id', episode.id)
+      .then(({ data }) => {
+        const list = (data as any[]) || []
+        setSubs(list)
+        // default subtitle = user's saved UI language, if available
+        const pref = getSavedLang()
+        if (list.find(s => s.lang === pref)) setActiveSub(pref)
+      })
+  }, [episode.id])
+
+  // Apply the chosen subtitle track to the <video>
+  useEffect(() => {
+    const v = slideRef.current?.querySelector('video') as HTMLVideoElement | null
+    if (!v || !v.textTracks) return
+    for (let i = 0; i < v.textTracks.length; i++) {
+      const tt = v.textTracks[i]
+      tt.mode = (tt.language === activeSub) ? 'showing' : 'hidden'
+    }
+  }, [activeSub, videoSrc, subs])
 
   const handleTap = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.no-tap')) return
@@ -190,16 +231,22 @@ function Slide({
       )}
 
       {/* Video */}
-      {isUnlocked && (
+      {isUnlocked && videoSrc && (
         <video
           ref={videoRef}
-          src={episode.video_url}
+          src={videoSrc}
           className="absolute inset-0 w-full h-full object-cover"
           playsInline
           loop
           preload="metadata"
+          crossOrigin="anonymous"
           poster={episode.thumbnail_url || undefined}
-        />
+        >
+          {subs.map(s => (
+            <track key={s.lang} kind="subtitles" srcLang={s.lang}
+              label={langLabel(s.lang)} src={s.storage_path} />
+          ))}
+        </video>
       )}
 
       {/* Gradient overlay */}
@@ -277,7 +324,42 @@ function Slide({
           </div>
           <span className="text-[11px] font-bold drop-shadow">Eps</span>
         </a>
+
+        {subs.length > 0 && (
+          <button onClick={(e) => { e.stopPropagation(); setSubMenu(true) }}
+            className="flex flex-col items-center gap-1">
+            <div className={clsx(
+              'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border',
+              activeSub ? 'bg-brand-pink/25 border-brand-pink' : 'bg-black/35 border-white/15'
+            )}>
+              <Captions size={20} className={activeSub ? 'text-brand-pink' : 'text-white'} />
+            </div>
+            <span className="text-[11px] font-bold drop-shadow">CC</span>
+          </button>
+        )}
       </div>
+
+      {/* Subtitle language menu */}
+      {subMenu && (
+        <div className="absolute inset-0 z-30 bg-black/70 backdrop-blur flex items-end no-tap"
+          onClick={(e) => { e.stopPropagation(); setSubMenu(false) }}>
+          <div className="w-full bg-[#1c1c1e] rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="text-base font-extrabold mb-3">Subtitles</div>
+            <button onClick={() => { setActiveSub(null); setSubMenu(false) }}
+              className={clsx('w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
+                !activeSub ? 'bg-brand-pink/20 text-brand-pink font-bold' : 'bg-white/[0.06]')}>
+              Off
+            </button>
+            {subs.map(s => (
+              <button key={s.lang} onClick={() => { setActiveSub(s.lang); setSubMenu(false) }}
+                className={clsx('w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
+                  activeSub === s.lang ? 'bg-brand-pink/20 text-brand-pink font-bold' : 'bg-white/[0.06]')}>
+                {langLabel(s.lang)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Paywall */}
       {showPaywall && (

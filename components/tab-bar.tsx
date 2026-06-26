@@ -3,17 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Compass, Wallet, User } from 'lucide-react'
+import { useI18n } from '@/lib/i18n'
 import clsx from 'clsx'
-
-const TABS = [
-  { href: '/', icon: Home, label: 'Home' },
-  { href: '/discover', icon: Compass, label: 'Discover' },
-  { href: '/wallet', icon: Wallet, label: 'Wallet' },
-  { href: '/profile', icon: User, label: 'Me' }
-]
 
 export function TabBar() {
   const pathname = usePathname()
+  const { t } = useI18n()
+  const TABS = [
+    { href: '/', icon: Home, label: t('nav.home') },
+    { href: '/discover', icon: Compass, label: t('nav.discover') },
+    { href: '/wallet', icon: Wallet, label: t('nav.wallet') },
+    { href: '/profile', icon: User, label: t('nav.me') }
+  ]
   return (
     <nav
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] flex z-30 border-t border-white/5"

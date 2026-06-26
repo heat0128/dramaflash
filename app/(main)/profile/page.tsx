@@ -1,9 +1,10 @@
 import { getCurrentUser, isVipActive } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { TopBar } from '@/components/top-bar'
-import { Crown, Bookmark, Clock, CreditCard, HelpCircle, LogOut, Settings } from 'lucide-react'
+import { Crown } from 'lucide-react'
 import Link from 'next/link'
 import { SignOutButton } from '@/components/sign-out-button'
+import { ProfileMenu } from '@/components/profile-menu'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,19 +53,7 @@ export default async function ProfilePage() {
           </div>
         )}
 
-        <div className="divide-y divide-white/5">
-          <MenuItem href="/wallet" icon={<Crown size={18} className="text-brand-orange" />}
-            label={vipActive ? 'Manage VIP' : 'Get VIP'} />
-          <MenuItem href="/favorites" icon={<Bookmark size={18} />} label="My Favorites" />
-          <MenuItem href="/history" icon={<Clock size={18} />} label="Watch History" />
-          <MenuItem href="/billing" icon={<CreditCard size={18} />} label="Billing" />
-          <MenuItem href="/help" icon={<HelpCircle size={18} />} label="Help & Feedback" />
-          <MenuItem href="/settings" icon={<Settings size={18} />} label="Settings" />
-          {user?.is_admin && (
-            <MenuItem href="/admin" icon={<Settings size={18} className="text-brand-pink" />}
-              label="Admin Panel" />
-          )}
-        </div>
+        <ProfileMenu vipActive={vipActive} isAdmin={!!user?.is_admin} />
 
         {user && (
           <div className="px-4 mt-6">
@@ -82,17 +71,5 @@ function StatBox({ num, label }: { num: number; label: string }) {
       <div className="text-lg font-extrabold">{num}</div>
       <div className="text-[10px] opacity-60 mt-0.5">{label}</div>
     </div>
-  )
-}
-
-function MenuItem({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link href={href} className="flex items-center gap-3.5 px-4 py-3.5">
-      <div className="w-9 h-9 rounded-xl bg-white/[0.06] flex items-center justify-center">
-        {icon}
-      </div>
-      <div className="flex-1 text-sm">{label}</div>
-      <span className="opacity-30">›</span>
-    </Link>
   )
 }

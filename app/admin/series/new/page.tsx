@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { compressImage } from '@/lib/image-compress'
 
 export default function NewSeriesPage() {
   const router = useRouter()
@@ -16,25 +17,25 @@ export default function NewSeriesPage() {
     const supabase = createClient()
 
     let coverUrl = ''
-    let verticalUrl = ''
     const cover = fd.get('cover') as File | null
-    const vertical = fd.get('vertical_cover') as File | null
 
     if (cover && cover.size > 0) {
-      const path = `series-${Date.now()}-cover-${cover.name.replace(/\s+/g,'_')}`
-      const { error, data } = await supabase.storage.from('covers').upload(path, cover)
-      if (error) { setErr(error.message); setLoading(false); return }
-      coverUrl = supabase.storage.from('covers').getPublicUrl(data.path).data.publicUrl
-    }
-    if (vertical && vertical.size > 0) {
-      const path = `series-${Date.now()}-vert-${vertical.name.replace(/\s+/g,'_')}`
-      const { error, data } = await supabase.storage.from('covers').upload(path, vertical)
-      if (error) { setErr(error.message); setLoading(false); return }
-      verticalUrl = supabase.storage.from('covers').getPublicUrl(data.path).data.publicUrl
+      try {
+        // Auto-compress + crop to vertical 9:16 (poster). Big AI images become ~200KB.
+        const blob = await compressImage(cover, { aspect: 9 / 16, maxWidth: 720, quality: 0.82 })
+        const path = `series-${Date.now()}-cover.jpg`
+        const { error, data } = await supabase.storage.from('covers')
+          .upload(path, blob, { contentType: 'image/jpeg' })
+        if (error) { setErr(error.message); setLoading(false); return }
+        coverUrl = supabase.storage.from('covers').getPublicUrl(data.path).data.publicUrl
+      } catch (e: any) {
+        setErr('Image processing failed: ' + (e.message || e)); setLoading(false); return
+      }
     }
 
     const tags = String(fd.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean)
 
+    // Store the same vertical image in both columns so all pages render it.
     const { data: series, error } = await supabase.from('series').insert({
       title: fd.get('title'),
       description: fd.get('description'),
@@ -44,7 +45,7 @@ export default function NewSeriesPage() {
       free_episodes: Number(fd.get('free_episodes')) || 2,
       coin_price: Number(fd.get('coin_price')) || 30,
       cover_url: coverUrl || null,
-      vertical_cover_url: verticalUrl || null,
+      vertical_cover_url: coverUrl || null,
       is_published: false
     }).select().single()
 
@@ -76,11 +77,11 @@ export default function NewSeriesPage() {
             <input type="number" name="coin_price" defaultValue="30" className="input"/>
           </Field>
         </div>
-        <Field label="Cover image (16:9)">
+        <Field label="Cover poster (vertical 9:16)">
           <input type="file" name="cover" accept="image/*" className="input"/>
-        </Field>
-        <Field label="Vertical poster (2:3)">
-          <input type="file" name="vertical_cover" accept="image/*" className="input"/>
+          <span className="text-[11px] opacity-50 mt-1 block">
+            Any size is fine — it's auto-cropped to vertical and compressed for you.
+          </span>
         </Field>
 
         {err && <div className="text-brand-orange text-sm">{err}</div>}

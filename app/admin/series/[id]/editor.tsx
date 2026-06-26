@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Series, Episode } from '@/lib/types'
-import { Trash2, Upload } from 'lucide-react'
+import { Trash2, Upload, Captions } from 'lucide-react'
+import { compressImage } from '@/lib/image-compress'
+import { SubtitleManager } from '@/components/subtitle-manager'
 
 export function SeriesEditor({
   series: initialSeries, episodes: initialEpisodes
@@ -17,6 +19,7 @@ export function SeriesEditor({
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [msg, setMsg] = useState('')
+  const [openSubs, setOpenSubs] = useState<string | null>(null)
 
   const togglePublish = async () => {
     const supabase = createClient()
@@ -64,13 +67,17 @@ export function SeriesEditor({
     // To keep this MVP simple, we store the path; you can sign in route handlers later.
     const videoUrl = data.path  // store storage path; we sign before playback
 
-    // Optionally upload thumbnail
+    // Optionally upload thumbnail (auto-compressed to vertical 9:16)
     let thumbUrl: string | null = null
     const thumb = fd.get('thumbnail') as File | null
     if (thumb && thumb.size > 0) {
-      const thumbPath = `series-${series.id}/thumb-ep-${epNumber}-${Date.now()}-${thumb.name.replace(/\s+/g,'_')}`
-      const { data: tdata } = await supabase.storage.from('covers').upload(thumbPath, thumb)
-      if (tdata) thumbUrl = supabase.storage.from('covers').getPublicUrl(tdata.path).data.publicUrl
+      try {
+        const tblob = await compressImage(thumb, { aspect: 9 / 16, maxWidth: 720, quality: 0.82 })
+        const thumbPath = `series-${series.id}/thumb-ep-${epNumber}-${Date.now()}.jpg`
+        const { data: tdata } = await supabase.storage.from('covers')
+          .upload(thumbPath, tblob, { contentType: 'image/jpeg' })
+        if (tdata) thumbUrl = supabase.storage.from('covers').getPublicUrl(tdata.path).data.publicUrl
+      } catch { /* thumbnail is optional; ignore failures */ }
     }
 
     const { data: ep, error: insErr } = await supabase.from('episodes').insert({
@@ -176,16 +183,26 @@ export function SeriesEditor({
         <h2 className="font-bold mb-3">Episodes ({episodes.length})</h2>
         <div className="space-y-2">
           {episodes.map(ep => (
-            <div key={ep.id} className="bg-white/[0.04] p-3 rounded-xl border border-white/10 flex items-center justify-between">
-              <div>
-                <div className="text-sm font-bold">
-                  Ep {ep.episode_number}{ep.is_free && ' · Free'}
-                  {ep.title && `: ${ep.title}`}
+            <div key={ep.id} className="bg-white/[0.04] p-3 rounded-xl border border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold">
+                    Ep {ep.episode_number}{ep.is_free && ' · Free'}
+                    {ep.title && `: ${ep.title}`}
+                  </div>
+                  <div className="text-xs opacity-50 truncate max-w-[200px]">{ep.video_url}</div>
                 </div>
-                <div className="text-xs opacity-50 truncate max-w-[240px]">{ep.video_url}</div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setOpenSubs(openSubs === ep.id ? null : ep.id)}
+                    className={`p-2 rounded-lg ${openSubs === ep.id ? 'bg-brand-pink/20 text-brand-pink' : 'text-white/60'}`}
+                    title="Subtitles">
+                    <Captions size={16}/>
+                  </button>
+                  <button onClick={() => deleteEpisode(ep.id)}
+                    className="text-red-400 p-2"><Trash2 size={16}/></button>
+                </div>
               </div>
-              <button onClick={() => deleteEpisode(ep.id)}
-                className="text-red-400 p-2"><Trash2 size={16}/></button>
+              {openSubs === ep.id && <SubtitleManager episodeId={ep.id} />}
             </div>
           ))}
         </div>
