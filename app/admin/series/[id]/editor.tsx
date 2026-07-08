@@ -48,24 +48,29 @@ export function SeriesEditor({
     setUploading(true); setUploadProgress(0); setMsg('')
     const fd = new FormData(e.currentTarget)
     const file = fd.get('video') as File
-    if (!file || file.size === 0) { setMsg('Pick a video file'); setUploading(false); return }
+    const externalUrl = String(fd.get('video_url') || '').trim()
+    if ((!file || file.size === 0) && !externalUrl) {
+      setMsg('Upload a video file or paste a video URL')
+      setUploading(false)
+      return
+    }
 
     const supabase = createClient()
     const epNumber = Number(fd.get('episode_number'))
-    const safeName = file.name.replace(/\s+/g, '_')
-    const path = `${series.id}/ep-${epNumber}-${Date.now()}-${safeName}`
+    let videoUrl = externalUrl
 
-    // Upload to storage - resumable for large files
-    const { error: upErr, data } = await supabase.storage
-      .from('videos')
-      .upload(path, file, { upsert: false, contentType: file.type })
+    if (file && file.size > 0) {
+      const safeName = file.name.replace(/\s+/g, '_')
+      const path = `${series.id}/ep-${epNumber}-${Date.now()}-${safeName}`
 
-    if (upErr) { setMsg('Upload failed: ' + upErr.message); setUploading(false); return }
-    setUploadProgress(100)
+      const { error: upErr, data } = await supabase.storage
+        .from('videos')
+        .upload(path, file, { upsert: false, contentType: file.type })
 
-    // For private bucket: store the path; we sign URLs at watch time via API.
-    // To keep this MVP simple, we store the path; you can sign in route handlers later.
-    const videoUrl = data.path  // store storage path; we sign before playback
+      if (upErr) { setMsg('Upload failed: ' + upErr.message); setUploading(false); return }
+      setUploadProgress(100)
+      videoUrl = data.path
+    }
 
     // Optionally upload thumbnail (auto-compressed to vertical 9:16)
     let thumbUrl: string | null = null
@@ -98,7 +103,7 @@ export function SeriesEditor({
     await supabase.from('series').update({ total_episodes: newTotal }).eq('id', series.id)
     setSeries({ ...series, total_episodes: newTotal })
     setEpisodes([...episodes, ep].sort((a, b) => a.episode_number - b.episode_number))
-    setMsg('Episode uploaded ✓')
+    setMsg('Episode saved')
     setUploading(false)
     ;(e.target as HTMLFormElement).reset()
   }
@@ -119,7 +124,7 @@ export function SeriesEditor({
             className={`px-4 py-2 rounded-xl text-sm font-bold ${
               series.is_featured ? 'bg-brand-gold text-black' : 'bg-white/10'
             }`}>
-            {series.is_featured ? '★ Recommended' : '☆ Recommend'}
+            {series.is_featured ? 'Recommended' : 'Recommend'}
           </button>
           <button onClick={togglePublish}
             className={`px-4 py-2 rounded-xl text-sm font-bold ${
@@ -161,8 +166,12 @@ export function SeriesEditor({
             <input type="checkbox" name="is_free"/> Mark this episode as free
           </label>
           <div>
-            <span className="text-xs opacity-60 block mb-1">Video file (mp4 recommended)</span>
-            <input type="file" name="video" accept="video/*" required className="input"/>
+            <span className="text-xs opacity-60 block mb-1">Video URL (YouTube, Dailymotion, .m3u8, or MP4)</span>
+            <input name="video_url" type="url" placeholder="https://..." className="input"/>
+          </div>
+          <div>
+            <span className="text-xs opacity-60 block mb-1">Or upload a video file (MP4 recommended)</span>
+            <input type="file" name="video" accept="video/*" className="input"/>
           </div>
           <div>
             <span className="text-xs opacity-60 block mb-1">Thumbnail (optional)</span>
@@ -187,7 +196,7 @@ export function SeriesEditor({
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold">
-                    Ep {ep.episode_number}{ep.is_free && ' · Free'}
+                    Ep {ep.episode_number}{ep.is_free && ' - Free'}
                     {ep.title && `: ${ep.title}`}
                   </div>
                   <div className="text-xs opacity-50 truncate max-w-[200px]">{ep.video_url}</div>
@@ -243,3 +252,4 @@ function Inline({
     </div>
   )
 }
+

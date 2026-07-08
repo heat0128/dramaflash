@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/toast'
 import { langLabel } from '@/lib/languages'
 import { getSavedLang } from '@/lib/i18n'
+import { getVideoSource } from '@/lib/video-source'
 import clsx from 'clsx'
 import type { Episode, Series } from '@/lib/types'
 
@@ -101,6 +102,8 @@ export function VideoFeed({
           idx={idx}
           item={item}
           videoRef={(el) => { videoRefs.current[idx] = el }}
+          isActive={idx === activeIdx}
+          shouldLoad={Math.abs(idx - activeIdx) <= 1}
           onUnlockCoin={() => unlockWithCoin(item.episode.id)}
           onUnlockAd={() => unlockWithAd(item.episode.id)}
           isVip={isVip}
@@ -112,11 +115,13 @@ export function VideoFeed({
 }
 
 function Slide({
-  idx, item, videoRef, onUnlockCoin, onUnlockAd, isVip, currentCoins
+  idx, item, videoRef, isActive, shouldLoad, onUnlockCoin, onUnlockAd, isVip, currentCoins
 }: {
   idx: number
   item: FeedItem
   videoRef: (el: HTMLVideoElement | null) => void
+  isActive: boolean
+  shouldLoad: boolean
   onUnlockCoin: () => void
   onUnlockAd: () => void
   isVip: boolean
@@ -137,9 +142,9 @@ function Slide({
 
   useEffect(() => { setShowPaywall(!isUnlocked) }, [isUnlocked])
 
-  // Fetch a playable (signed) video URL once unlocked
+  // Fetch a playable URL only for the current slide and the next/previous one.
   useEffect(() => {
-    if (!isUnlocked || videoSrc) return
+    if (!isUnlocked || !shouldLoad || videoSrc) return
     fetch('/api/video-url', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ episodeId: episode.id })
@@ -147,7 +152,7 @@ function Slide({
       .then(r => r.json())
       .then(j => { if (j.url) setVideoSrc(j.url) })
       .catch(() => {})
-  }, [isUnlocked, videoSrc, episode.id])
+  }, [isUnlocked, shouldLoad, videoSrc, episode.id])
 
   // Load subtitle list for this episode
   useEffect(() => {
@@ -232,21 +237,19 @@ function Slide({
 
       {/* Video */}
       {isUnlocked && videoSrc && (
-        <video
-          ref={videoRef}
+        <SmartVideoPlayer
+          videoRef={videoRef}
           src={videoSrc}
+          isActive={isActive}
           className="absolute inset-0 w-full h-full object-cover"
-          playsInline
-          loop
-          preload="metadata"
-          crossOrigin="anonymous"
           poster={episode.thumbnail_url || undefined}
-        >
-          {subs.map(s => (
-            <track key={s.lang} kind="subtitles" srcLang={s.lang}
-              label={langLabel(s.lang)} src={s.storage_path} />
-          ))}
-        </video>
+          tracks={subs.map(s => ({
+            key: s.lang,
+            srcLang: s.lang,
+            label: langLabel(s.lang),
+            src: s.storage_path
+          }))}
+        />
       )}
 
       {/* Gradient overlay */}
@@ -373,6 +376,130 @@ function Slide({
         />
       )}
     </div>
+  )
+}
+
+function SmartVideoPlayer({
+  src, isActive, videoRef, className, poster, tracks
+}: {
+  src: string
+  isActive: boolean
+  videoRef: (el: HTMLVideoElement | null) => void
+  className?: string
+  poster?: string
+  tracks: { key: string; srcLang: string; label: string; src: string }[]
+}) {
+  const source = getVideoSource(src)
+
+  useEffect(() => {
+    if (source.type !== 'file') videoRef(null)
+  }, [source.type, videoRef])
+
+  if (source.type === 'youtube' || source.type === 'dailymotion') {
+    if (!isActive) return null
+    return (
+      <iframe
+        src={source.embedUrl}
+        className={className}
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+        allowFullScreen
+        title="Episode video"
+      />
+    )
+  }
+
+  return (
+    <VideoPlayer
+      videoRef={videoRef}
+      src={source.url}
+      isActive={isActive}
+      className={className}
+      poster={poster}
+    >
+      {tracks.map(track => (
+        <track key={track.key} kind="subtitles" srcLang={track.srcLang}
+          label={track.label} src={track.src} />
+      ))}
+    </VideoPlayer>
+  )
+}
+
+function VideoPlayer({
+  src, isActive, videoRef, className, poster, children
+}: {
+  src: string
+  isActive: boolean
+  videoRef: (el: HTMLVideoElement | null) => void
+  className?: string
+  poster?: string
+  children: React.ReactNode
+}) {
+  const localRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    const video = localRef.current
+    if (!video) return
+    let disposed = false
+    let cleanup = () => {
+      video.removeAttribute('src')
+      video.load()
+    }
+
+    if (src.includes('.m3u8')) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src
+      } else {
+        import('hls.js').then(({ default: Hls }) => {
+          if (disposed) return
+          if (!Hls.isSupported()) {
+            video.src = src
+            return
+          }
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            maxBufferLength: 30,
+            backBufferLength: 30
+          })
+          cleanup = () => hls.destroy()
+          hls.loadSource(src)
+          hls.attachMedia(video)
+        }).catch(() => {
+          if (!disposed) video.src = src
+        })
+      }
+    } else {
+      video.src = src
+    }
+
+    return () => {
+      disposed = true
+      cleanup()
+    }
+  }, [src])
+
+  useEffect(() => {
+    const video = localRef.current
+    if (!video) return
+    if (isActive) video.play().catch(() => {})
+    else video.pause()
+  }, [isActive, src])
+
+  return (
+    <video
+      ref={(el) => {
+        localRef.current = el
+        videoRef(el)
+      }}
+      className={className}
+      playsInline
+      loop
+      preload={isActive ? 'auto' : 'metadata'}
+      crossOrigin="anonymous"
+      poster={poster}
+    >
+      {children}
+    </video>
   )
 }
 
