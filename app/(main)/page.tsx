@@ -1,76 +1,101 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, isVipActive } from '@/lib/auth'
-import { VideoFeed } from '@/components/video-feed'
+import { getCurrentUser } from '@/lib/auth'
 import { TopBar } from '@/components/top-bar'
+import { CatalogHome } from '@/components/catalog-home'
+import type { Series } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
+
+const SECTION_SIZE = 10
 
 export default async function HomePage() {
   const supabase = createClient()
   const user = await getCurrentUser()
-  const vipActive = isVipActive(user)
 
-  // Get first episode of each published series for the feed
-  const { data: series } = await supabase
-    .from('series')
-    .select('*')
-    .eq('is_published', true)
-    .order('created_at', { ascending: false })
-    .limit(20)
-
-  const seriesIds = (series || []).map((s) => s.id)
-  const { data: episodes } = seriesIds.length
-    ? await supabase
-        .from('episodes')
+  const [trendingResult, newResult, popularResult, recommendedResult, latestResult] =
+    await Promise.all([
+      supabase
+        .from('series')
         .select('*')
-        .in('series_id', seriesIds)
-        .lte('episode_number', 1)
-        .order('episode_number')
-    : { data: [] as any[] }
+        .eq('is_published', true)
+        .order('view_count', { ascending: false })
+        .limit(SECTION_SIZE),
+      supabase
+        .from('series')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(SECTION_SIZE),
+      supabase
+        .from('series')
+        .select('*')
+        .eq('is_published', true)
+        .order('like_count', { ascending: false })
+        .limit(SECTION_SIZE),
+      supabase
+        .from('series')
+        .select('*')
+        .eq('is_published', true)
+        .eq('is_featured', true)
+        .order('featured_order')
+        .limit(SECTION_SIZE),
+      supabase
+        .from('series')
+        .select('*')
+        .eq('is_published', true)
+        .order('updated_at', { ascending: false })
+        .limit(SECTION_SIZE)
+    ])
 
-  // User's unlocked episode IDs
-  let unlockedIds = new Set<string>()
+  let continueWatching: ContinueWatchingItem[] = []
   if (user) {
-    const { data: unlocks } = await supabase
-      .from('unlocks')
-      .select('episode_id')
+    const { data } = await supabase
+      .from('watch_history')
+      .select('progress_seconds, episode:episode_id(*), series:series_id(*)')
       .eq('user_id', user.id)
-    unlockedIds = new Set((unlocks || []).map((u) => u.episode_id))
-  }
+      .order('watched_at', { ascending: false })
+      .limit(SECTION_SIZE)
 
-  const feedItems = (episodes || []).map((ep) => {
-    const s = series!.find((s) => s.id === ep.series_id)!
-    const isUnlocked =
-      ep.is_free || ep.episode_number <= s.free_episodes || unlockedIds.has(ep.id) || vipActive
-    return { episode: ep, series: s, isUnlocked }
-  })
+    continueWatching = (data || [])
+      .map((row) => normalizeHistoryRow(row))
+      .filter((item): item is ContinueWatchingItem => Boolean(item))
+  }
 
   return (
     <>
-      <TopBar coins={user?.coins ?? 0} transparent />
-      {feedItems.length > 0 ? (
-        <VideoFeed initialItems={feedItems} initialCoins={user?.coins ?? 0} isVip={vipActive} />
-      ) : (
-        <EmptyState />
-      )}
+      <TopBar coins={user?.coins ?? 0} />
+      <CatalogHome
+        continueWatching={continueWatching}
+        trending={(trendingResult.data || []) as Series[]}
+        newReleases={(newResult.data || []) as Series[]}
+        popular={(popularResult.data || []) as Series[]}
+        recommended={(recommendedResult.data || []) as Series[]}
+        latest={(latestResult.data || []) as Series[]}
+      />
     </>
   )
 }
 
-function EmptyState() {
-  return (
-    <div className="h-screen flex flex-col items-center justify-center text-center px-8">
-      <div className="text-6xl mb-4">🎬</div>
-      <h2 className="text-xl font-bold mb-2">No dramas yet</h2>
-      <p className="text-sm opacity-60">
-        Sign in to the admin panel and upload your first series to get started.
-      </p>
-      <a
-        href="/admin"
-        className="mt-6 px-5 py-2.5 rounded-full bg-brand-gradient text-sm font-bold"
-      >
-        Go to Admin
-      </a>
-    </div>
-  )
+export type ContinueWatchingItem = {
+  series: Series
+  episodeId: string
+  episodeNumber: number
+  progressSeconds: number
+  durationSeconds: number | null
+}
+
+function normalizeHistoryRow(row: unknown): ContinueWatchingItem | null {
+  const value = row as {
+    progress_seconds?: number
+    episode?: { id?: string; episode_number?: number; duration_seconds?: number | null } | null
+    series?: Series | null
+  }
+  if (!value.episode?.id || !value.series) return null
+  return {
+    series: value.series,
+    episodeId: value.episode.id,
+    episodeNumber: value.episode.episode_number || 1,
+    progressSeconds: value.progress_seconds || 0,
+    durationSeconds: value.episode.duration_seconds ?? null
+  }
 }
