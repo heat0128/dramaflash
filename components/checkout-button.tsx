@@ -9,7 +9,7 @@ export function CheckoutButton({
   children,
   className
 }: {
-  type: 'coin_pack' | 'subscription'
+  type: 'coin_pack' | 'subscription' | 'episode' | 'season'
   itemId: string
   children: React.ReactNode
   className?: string
@@ -23,7 +23,7 @@ export function CheckoutButton({
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, itemId })
+        body: JSON.stringify({ type, itemId, idempotencyKey: crypto.randomUUID() })
       })
       const json = await res.json()
       if (!res.ok) {
@@ -32,8 +32,8 @@ export function CheckoutButton({
         return
       }
       window.location.href = json.url
-    } catch (e: any) {
-      toast(e.message || 'Network error')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Network error')
       setLoading(false)
     }
   }

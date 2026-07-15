@@ -19,20 +19,23 @@ export async function POST(req: Request) {
   }
 
   const svc = createServiceClient()
+  const { error: eventError } = await svc.from('webhook_events').insert({
+    provider: 'STRIPE',
+    event_id: event.id,
+    event_type: event.type,
+    status: 'PROCESSING',
+    payload: event as unknown as Record<string, unknown>
+  })
+  if (eventError?.code === '23505') {
+    return NextResponse.json({ ok: true, duplicate: true })
+  }
+  if (eventError) throw eventError
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
     const md = session.metadata || {}
     const userId = md.userId
     if (!userId) return NextResponse.json({ ok: true })
-
-    // Idempotency check
-    const { data: existingTx } = await svc
-      .from('transactions')
-      .select('id')
-      .eq('stripe_session_id', session.id)
-      .maybeSingle()
-    if (existingTx) return NextResponse.json({ ok: true, duplicate: true })
 
     const { data: profile } = await svc.from('profiles').select('*').eq('id', userId).single()
     if (!profile) return NextResponse.json({ error: 'No profile' }, { status: 404 })
@@ -41,10 +44,14 @@ export async function POST(req: Request) {
 
     if (md.type === 'coin_pack') {
       const coins = parseInt(md.coins || '0', 10)
-      await svc
-        .from('profiles')
-        .update({ coins: profile.coins + coins })
-        .eq('id', userId)
+      await svc.rpc('credit_wallet', {
+        p_user_id: userId,
+        p_amount: coins,
+        p_entry_type: 'COIN_PURCHASE',
+        p_reference_type: 'STRIPE_SESSION',
+        p_reference_id: session.id,
+        p_idempotency_key: event.id
+      })
       await svc.from('transactions').insert({
         user_id: userId,
         type: 'coin_pack',
@@ -53,7 +60,7 @@ export async function POST(req: Request) {
         stripe_session_id: session.id,
         stripe_payment_intent: session.payment_intent as string,
         status: 'succeeded',
-        metadata: md as any
+        metadata: md
       })
     } else if (md.type === 'subscription') {
       const days = parseInt(md.durationDays || '0', 10)
@@ -66,10 +73,19 @@ export async function POST(req: Request) {
         .from('profiles')
         .update({
           is_vip: true,
-          vip_expires_at: newExpiry.toISOString(),
-          coins: profile.coins + includedCoins
+          vip_expires_at: newExpiry.toISOString()
         })
         .eq('id', userId)
+      if (includedCoins > 0) {
+        await svc.rpc('credit_wallet', {
+          p_user_id: userId,
+          p_amount: includedCoins,
+          p_entry_type: 'VIP_BONUS',
+          p_reference_type: 'STRIPE_SESSION',
+          p_reference_id: session.id,
+          p_idempotency_key: `${event.id}:coins`
+        })
+      }
       await svc.from('transactions').insert({
         user_id: userId,
         type: 'subscription',
@@ -79,10 +95,41 @@ export async function POST(req: Request) {
         stripe_session_id: session.id,
         stripe_payment_intent: session.payment_intent as string,
         status: 'succeeded',
-        metadata: md as any
+        metadata: md
+      })
+    } else if (md.type === 'episode' && md.episodeId && md.seriesId) {
+      await svc.from('purchases').upsert(
+        {
+          user_id: userId,
+          order_id: md.orderId || null,
+          series_id: md.seriesId,
+          episode_id: md.episodeId,
+          purchase_type: 'EPISODE'
+        },
+        { onConflict: 'user_id,episode_id' }
+      )
+    } else if (md.type === 'season' && md.seriesId) {
+      await svc.from('purchases').insert({
+        user_id: userId,
+        order_id: md.orderId || null,
+        series_id: md.seriesId,
+        purchase_type: 'SEASON'
       })
     }
+
+    if (md.orderId) {
+      await svc.from('orders').update({ status: 'PAID' }).eq('id', md.orderId)
+    }
   }
+
+  await svc
+    .from('webhook_events')
+    .update({
+      status: 'PROCESSED',
+      processed_at: new Date().toISOString()
+    })
+    .eq('provider', 'STRIPE')
+    .eq('event_id', event.id)
 
   return NextResponse.json({ received: true })
 }
