@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Series, Episode } from '@/lib/types'
+import type { Series, Episode, AspectRatio } from '@/lib/types'
 import { Trash2, Upload, Captions } from 'lucide-react'
 import { compressImage } from '@/lib/image-compress'
 import { SubtitleManager } from '@/components/subtitle-manager'
+import { uploadToStream } from '@/lib/cloudflare/upload-client'
 
 export function SeriesEditor({
   series: initialSeries,
@@ -64,31 +65,18 @@ export function SeriesEditor({
 
     const supabase = createClient()
     const epNumber = Number(fd.get('episode_number'))
-    let videoUrl = externalUrl
-
-    if (file && file.size > 0) {
-      const safeName = file.name.replace(/\s+/g, '_')
-      const path = `${series.id}/ep-${epNumber}-${Date.now()}-${safeName}`
-
-      const { error: upErr, data } = await supabase.storage
-        .from('videos')
-        .upload(path, file, { upsert: false, contentType: file.type })
-
-      if (upErr) {
-        setMsg('Upload failed: ' + upErr.message)
-        setUploading(false)
-        return
-      }
-      setUploadProgress(100)
-      videoUrl = data.path
-    }
+    const aspectRatio = String(fd.get('aspect_ratio') || '9:16') as AspectRatio
 
     // Optionally upload thumbnail (auto-compressed to vertical 9:16)
     let thumbUrl: string | null = null
     const thumb = fd.get('thumbnail') as File | null
     if (thumb && thumb.size > 0) {
       try {
-        const tblob = await compressImage(thumb, { aspect: 9 / 16, maxWidth: 720, quality: 0.82 })
+        const tblob = await compressImage(thumb, {
+          aspect: aspectRatio === '16:9' ? 16 / 9 : 9 / 16,
+          maxWidth: aspectRatio === '16:9' ? 1280 : 720,
+          quality: 0.82
+        })
         const thumbPath = `series-${series.id}/thumb-ep-${epNumber}-${Date.now()}.jpg`
         const { data: tdata } = await supabase.storage
           .from('covers')
@@ -107,10 +95,12 @@ export function SeriesEditor({
         episode_number: epNumber,
         title: (fd.get('title') as string) || null,
         description: (fd.get('description') as string) || null,
-        video_url: videoUrl,
+        video_url: externalUrl || 'pending:cloudflare-stream',
         thumbnail_url: thumbUrl,
         duration_seconds: Number(fd.get('duration_seconds')) || null,
-        is_free: fd.get('is_free') === 'on'
+        is_free: fd.get('is_free') === 'on',
+        aspect_ratio: aspectRatio,
+        status: file?.size ? 'PROCESSING' : 'PUBLISHED'
       })
       .select()
       .single()
@@ -119,6 +109,43 @@ export function SeriesEditor({
       setMsg('Save failed: ' + insErr.message)
       setUploading(false)
       return
+    }
+
+    if (file && file.size > 0) {
+      try {
+        const uploadResponse = await fetch('/api/admin/stream-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            episodeId: ep.id,
+            fileSize: file.size,
+            maxDurationSeconds: Number(fd.get('duration_seconds')) || 7200,
+            language: series.original_language || 'en',
+            aspectRatio
+          })
+        })
+        const upload = (await uploadResponse.json()) as {
+          error?: string
+          uploadURL?: string
+          protocol?: 'basic' | 'tus'
+          uid?: string
+        }
+        if (!uploadResponse.ok || !upload.uploadURL || !upload.protocol) {
+          throw new Error(upload.error || 'Unable to create Cloudflare upload')
+        }
+        await uploadToStream({
+          file,
+          uploadURL: upload.uploadURL,
+          protocol: upload.protocol,
+          onProgress: setUploadProgress
+        })
+        ep.video_url = `cloudflare:${upload.uid}`
+        ep.status = 'PROCESSING'
+      } catch (error) {
+        setMsg(error instanceof Error ? error.message : 'Video upload failed')
+        setUploading(false)
+        return
+      }
     }
 
     // Update series total
@@ -220,6 +247,15 @@ export function SeriesEditor({
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="is_free" /> Mark this episode as free
           </label>
+          <label className="block">
+            <span className="text-xs opacity-60 block mb-1">Video aspect ratio</span>
+            <select name="aspect_ratio" defaultValue="9:16" className="input">
+              <option value="9:16">9:16 — Vertical short drama</option>
+              <option value="16:9">16:9 — Landscape video</option>
+              <option value="1:1">1:1 — Square</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
           <div>
             <span className="text-xs opacity-60 block mb-1">
               Video URL (YouTube, Dailymotion, .m3u8, or MP4)
@@ -228,7 +264,7 @@ export function SeriesEditor({
           </div>
           <div>
             <span className="text-xs opacity-60 block mb-1">
-              Or upload a video file (MP4 recommended)
+              Or upload directly to Cloudflare Stream (resumable for large files)
             </span>
             <input type="file" name="video" accept="video/*" className="input" />
           </div>

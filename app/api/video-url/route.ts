@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { isVipActive } from '@/lib/auth'
+import { createStreamToken, streamHlsUrl } from '@/lib/cloudflare/stream'
 
 // Returns a signed, time-limited URL for a video, but ONLY if the user
 // is allowed to watch (free episode, VIP, or has unlocked it).
@@ -39,9 +40,40 @@ export async function POST(req: Request) {
           .maybeSingle()
         if (unlock) allowed = true
       }
+      if (!allowed) {
+        const { data: purchase } = await svc
+          .from('purchases')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .eq('series_id', ep.series_id)
+          .or(`episode_id.eq.${episodeId},purchase_type.eq.SEASON`)
+          .maybeSingle()
+        if (purchase) allowed = true
+      }
     }
 
     if (!allowed) return NextResponse.json({ error: 'Locked' }, { status: 403 })
+
+    const { data: streamAsset } = await svc
+      .from('video_assets')
+      .select('id, provider_asset_id, aspect_ratio')
+      .eq('episode_id', episodeId)
+      .eq('provider', 'CLOUDFLARE_STREAM')
+      .eq('type', 'FULL_VIDEO')
+      .eq('status', 'READY')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (streamAsset?.provider_asset_id) {
+      const { token } = await createStreamToken(streamAsset.provider_asset_id)
+      return NextResponse.json({
+        url: streamHlsUrl(token),
+        assetId: streamAsset.id,
+        aspectRatio: streamAsset.aspect_ratio,
+        expiresIn: 900
+      })
+    }
 
     // If video_url is already a full https URL (e.g. external CDN), just return it.
     if (ep.video_url.startsWith('http')) {
@@ -55,7 +87,10 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ url: signed.signedUrl })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to create playback URL' },
+      { status: 500 }
+    )
   }
 }
