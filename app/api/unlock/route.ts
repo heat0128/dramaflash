@@ -4,7 +4,7 @@ import { isVipActive } from '@/lib/auth'
 
 export async function POST(req: Request) {
   try {
-    const { episodeId, method } = await req.json()
+    const { episodeId, method, idempotencyKey } = await req.json()
     if (!episodeId || !['coin', 'ad'].includes(method)) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
@@ -41,23 +41,24 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ ok: true, coins: profile.coins })
 
     if (method === 'coin') {
-      const price = ep.series.coin_price ?? 30
-      if (profile.coins < price) {
+      const { data, error } = await supabase.rpc('unlock_episode_with_coins', {
+        p_episode_id: episodeId,
+        p_idempotency_key: idempotencyKey || crypto.randomUUID()
+      })
+
+      if (error) throw error
+
+      const result = Array.isArray(data) ? data[0] : data
+      if (!result?.success) {
         return NextResponse.json({ error: 'Not enough coins' }, { status: 402 })
       }
-      // Deduct + insert unlock
-      const { error: e1 } = await svc
-        .from('profiles')
-        .update({ coins: profile.coins - price })
-        .eq('id', authUser.id)
-      if (e1) throw e1
-      await svc.from('unlocks').insert({
-        user_id: authUser.id,
-        episode_id: episodeId,
-        method: 'coin',
-        coins_spent: price
+
+      return NextResponse.json({
+        ok: true,
+        coins: result.balance,
+        coinsSpent: result.coins_spent,
+        alreadyAccessible: result.already_unlocked
       })
-      return NextResponse.json({ ok: true, coins: profile.coins - price })
     }
 
     if (method === 'ad') {
