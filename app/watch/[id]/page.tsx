@@ -48,7 +48,12 @@ export default async function WatchPage({ params }: { params: { id: string } }) 
   return (
     <ToastProvider>
       <TopBar coins={user?.coins ?? 0} transparent />
-      <VideoFeed initialItems={feedItems} initialCoins={user?.coins ?? 0} isVip={vipActive} />
+      <VideoFeed
+        initialItems={feedItems}
+        initialCoins={user?.coins ?? 0}
+        isVip={vipActive}
+        adRewardsEnabled={process.env.ENABLE_AD_REWARDS === 'true'}
+      />
     </ToastProvider>
   )
 }

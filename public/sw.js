@@ -1,25 +1,46 @@
-// Minimal service worker — its presence is what lets browsers offer "Add to Home Screen".
-const CACHE = 'bingego-v1'
+const CACHE = 'bingego-shell-v2'
+const SHELL = ['/manifest.json', '/favicon.png', '/icon-192.png', '/icon-512.png']
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)))
   self.skipWaiting()
 })
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(self.clients.claim())
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
+  )
 })
 
-// Network-first; fall back to cache when offline.
 self.addEventListener('fetch', (event) => {
-  const req = event.request
-  if (req.method !== 'GET') return
+  const request = event.request
+  const url = new URL(request.url)
+  if (
+    request.method !== 'GET' ||
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api/') ||
+    request.destination === 'video' ||
+    request.destination === 'audio'
+  ) return
+
+  if (request.destination === 'document') {
+    event.respondWith(fetch(request).catch(() => caches.match(request)))
+    return
+  }
+
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const copy = res.clone()
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {})
-        return res
+    caches.match(request).then((cached) => {
+      if (cached) return cached
+      return fetch(request).then((response) => {
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone()
+          caches.open(CACHE).then((cache) => cache.put(request, copy))
+        }
+        return response
       })
-      .catch(() => caches.match(req))
+    })
   )
 })

@@ -5,7 +5,7 @@ import { isVipActive } from '@/lib/auth'
 export async function POST(req: Request) {
   try {
     const { episodeId, method, idempotencyKey } = await req.json()
-    if (!episodeId || !['coin', 'ad'].includes(method)) {
+    if (!episodeId || method !== 'coin') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
@@ -59,17 +59,6 @@ export async function POST(req: Request) {
         coinsSpent: result.coins_spent,
         alreadyAccessible: result.already_unlocked
       })
-    }
-
-    if (method === 'ad') {
-      // Trust server-side that ad SDK confirmed completion (in prod, verify ad reward callback)
-      await svc.from('unlocks').insert({
-        user_id: authUser.id,
-        episode_id: episodeId,
-        method: 'ad',
-        coins_spent: 0
-      })
-      return NextResponse.json({ ok: true, coins: profile.coins })
     }
 
     return NextResponse.json({ error: 'Unknown method' }, { status: 400 })

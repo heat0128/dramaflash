@@ -3,6 +3,12 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export async function POST() {
   try {
+    if (process.env.ENABLE_AD_REWARDS !== 'true') {
+      return NextResponse.json(
+        { error: 'Ad rewards require a verified provider callback' },
+        { status: 503 }
+      )
+    }
     const supabase = createClient()
     const {
       data: { user: authUser }

@@ -30,11 +30,13 @@ type FeedItem = {
 export function VideoFeed({
   initialItems,
   initialCoins,
-  isVip
+  isVip,
+  adRewardsEnabled = false
 }: {
   initialItems: FeedItem[]
   initialCoins: number
   isVip: boolean
+  adRewardsEnabled?: boolean
 }) {
   const [items, setItems] = useState(initialItems)
   const [coins, setCoins] = useState(initialCoins)
@@ -155,6 +157,7 @@ export function VideoFeed({
           onEnded={() => playNext(idx)}
           isVip={isVip}
           currentCoins={coins}
+          adRewardsEnabled={adRewardsEnabled}
         />
       ))}
     </div>
@@ -171,7 +174,8 @@ function Slide({
   onUnlockAd,
   onEnded,
   isVip,
-  currentCoins
+  currentCoins,
+  adRewardsEnabled
 }: {
   idx: number
   item: FeedItem
@@ -183,6 +187,7 @@ function Slide({
   onEnded: () => void
   isVip: boolean
   currentCoins: number
+  adRewardsEnabled: boolean
 }) {
   const { episode, series, isUnlocked } = item
   const [liked, setLiked] = useState(false)
@@ -529,6 +534,7 @@ function Slide({
           isVip={isVip}
           onCoin={onUnlockCoin}
           onAd={onUnlockAd}
+          adRewardsEnabled={adRewardsEnabled}
         />
       )}
     </div>
@@ -930,7 +936,8 @@ function Paywall({
   currentCoins,
   isVip,
   onCoin,
-  onAd
+  onAd,
+  adRewardsEnabled
 }: {
   series: Series
   episode: Episode
@@ -938,6 +945,7 @@ function Paywall({
   isVip: boolean
   onCoin: () => void
   onAd: () => void
+  adRewardsEnabled: boolean
 }) {
   return (
     <div
@@ -985,21 +993,23 @@ function Paywall({
           <div className="text-sm font-bold text-brand-gold">From $4.99</div>
         </a>
 
-        <button
-          onClick={onAd}
-          className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
-              <span>▶</span>
+        {adRewardsEnabled && (
+          <button
+            onClick={onAd}
+            className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                <span>▶</span>
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold">Watch an ad</div>
+                <div className="text-[11px] opacity-60">Unlock this episode for free</div>
+              </div>
             </div>
-            <div className="text-left">
-              <div className="text-sm font-bold">Watch an ad</div>
-              <div className="text-[11px] opacity-60">Unlock this episode for free</div>
-            </div>
-          </div>
-          <div className="text-sm font-bold text-brand-gold">Free</div>
-        </button>
+            <div className="text-sm font-bold text-brand-gold">Free</div>
+          </button>
+        )}
       </div>
     </div>
   )
