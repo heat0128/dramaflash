@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function ProfilePage() {
   const user = await getCurrentUser()
   const vipActive = isVipActive(user)
-  const supabase = createClient()
+  const supabase = await createClient()
 
   let stats = { favorites: 0, watched: 0 }
   if (user) {

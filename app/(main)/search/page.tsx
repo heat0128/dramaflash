@@ -7,9 +7,14 @@ import type { Series } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const query = (searchParams.q || '').trim().slice(0, 80)
-  const supabase = createClient()
+export default async function SearchPage({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const query = (q || '').trim().slice(0, 80)
+  const supabase = await createClient()
   const { data } = query
     ? await supabase
         .from('series')

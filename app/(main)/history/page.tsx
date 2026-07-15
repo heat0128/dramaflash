@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export default async function HistoryPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login?next=/history')
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: history } = await supabase
     .from('watch_history')

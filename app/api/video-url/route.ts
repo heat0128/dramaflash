@@ -8,7 +8,7 @@ import { createStreamToken, streamHlsUrl } from '@/lib/cloudflare/stream'
 export async function POST(req: Request) {
   try {
     const { episodeId } = await req.json()
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { user: authUser }
     } = await supabase.auth.getUser()

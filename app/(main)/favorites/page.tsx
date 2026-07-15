@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export default async function FavoritesPage() {
   const user = await getCurrentUser()
   if (!user) redirect('/login?next=/favorites')
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: favs } = await supabase
     .from('favorites')

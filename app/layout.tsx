@@ -31,8 +31,8 @@ const seoCopy: Record<LangCode, { title: string; description: string }> = {
   }
 }
 
-export function generateMetadata(): Metadata {
-  const { locale } = getRequestMarket()
+export async function generateMetadata(): Promise<Metadata> {
+  const { locale } = await getRequestMarket()
   const copy = seoCopy[locale]
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bingego.com'
 
@@ -82,8 +82,8 @@ export const viewport: Viewport = {
   themeColor: '#000000'
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { locale } = getRequestMarket()
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale } = await getRequestMarket()
   return (
     <html lang={locale}>
       <body>

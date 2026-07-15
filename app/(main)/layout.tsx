@@ -4,8 +4,8 @@ import { InstallPrompt } from '@/components/install-prompt'
 import { LanguageProvider } from '@/lib/i18n'
 import { getRequestMarket } from '@/lib/i18n-server'
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const { locale } = getRequestMarket()
+export default async function MainLayout({ children }: { children: React.ReactNode }) {
+  const { locale } = await getRequestMarket()
   return (
     <LanguageProvider initialLanguage={locale}>
       <ToastProvider>

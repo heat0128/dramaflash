@@ -6,7 +6,7 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function DiscoverPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const user = await getCurrentUser()
 
   const { data: trending } = await supabase

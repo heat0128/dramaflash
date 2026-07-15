@@ -8,8 +8,8 @@ export type RequestMarket = {
   timeZone: string
 }
 
-export function getRequestMarket(): RequestMarket {
-  const requestHeaders = headers()
+export async function getRequestMarket(): Promise<RequestMarket> {
+  const requestHeaders = await headers()
   const requestedLocale = requestHeaders.get('x-app-locale') || DEFAULT_LANGUAGE
 
   return {
@@ -20,14 +20,14 @@ export function getRequestMarket(): RequestMarket {
   }
 }
 
-export function formatCurrency(amount: number, market = getRequestMarket()) {
+export function formatCurrency(amount: number, market: RequestMarket) {
   return new Intl.NumberFormat(market.locale, {
     style: 'currency',
     currency: market.currency
   }).format(amount)
 }
 
-export function formatDate(value: string | Date, market = getRequestMarket()) {
+export function formatDate(value: string | Date, market: RequestMarket) {
   return new Intl.DateTimeFormat(market.locale, {
     dateStyle: 'medium',
     timeZone: market.timeZone

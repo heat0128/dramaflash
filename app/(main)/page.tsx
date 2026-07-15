@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const SECTION_SIZE = 10
 
 export default async function HomePage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const user = await getCurrentUser()
 
   const [trendingResult, newResult, popularResult, recommendedResult, latestResult] =

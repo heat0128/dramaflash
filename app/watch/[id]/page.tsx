@@ -7,13 +7,14 @@ import { notFound } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-export default async function WatchPage({ params }: { params: { id: string } }) {
-  const supabase = createClient()
+export default async function WatchPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const supabase = await createClient()
   const user = await getCurrentUser()
   const vipActive = isVipActive(user)
 
   // Find the episode and its full series
-  const { data: startEp } = await supabase.from('episodes').select('*').eq('id', params.id).single()
+  const { data: startEp } = await supabase.from('episodes').select('*').eq('id', id).single()
   if (!startEp) notFound()
 
   const { data: series } = await supabase

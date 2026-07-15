@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
   const { seriesId } = await req.json()
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const { seriesId } = await req.json()
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user }
   } = await supabase.auth.getUser()

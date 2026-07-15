@@ -19,11 +19,12 @@ const CATEGORIES = new Set([
 
 export const dynamic = 'force-dynamic'
 
-export default async function CategoryPage({ params }: { params: { category: string } }) {
-  const category = decodeURIComponent(params.category).toLowerCase()
+export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
+  const { category: categoryParam } = await params
+  const category = decodeURIComponent(categoryParam).toLowerCase()
   if (!CATEGORIES.has(category)) notFound()
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data } = await supabase
     .from('series')
     .select('*')

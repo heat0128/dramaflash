@@ -14,18 +14,24 @@ export function generateStaticParams() {
   return documents.map((document) => ({ document }))
 }
 
-export function generateMetadata({ params }: { params: { document: string } }): Metadata {
-  if (!isLegalDocument(params.document)) return {}
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ document: string }>
+}): Promise<Metadata> {
+  const { document } = await params
+  if (!isLegalDocument(document)) return {}
   return {
-    title: `${legalCopy[params.document].title} · BingeGo`,
-    description: legalCopy[params.document].summary,
-    alternates: { canonical: `/legal/${params.document}` }
+    title: `${legalCopy[document].title} · BingeGo`,
+    description: legalCopy[document].summary,
+    alternates: { canonical: `/legal/${document}` }
   }
 }
 
-export default function LegalPage({ params }: { params: { document: string } }) {
-  if (!isLegalDocument(params.document)) notFound()
-  const document = legalCopy[params.document]
+export default async function LegalPage({ params }: { params: Promise<{ document: string }> }) {
+  const { document: documentParam } = await params
+  if (!isLegalDocument(documentParam)) notFound()
+  const document = legalCopy[documentParam]
 
   return (
     <main className="min-h-screen bg-black px-5 pb-16 pt-8 text-white">
