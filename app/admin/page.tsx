@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,18 +98,18 @@ export default async function AdminDashboard() {
       <div className="bg-white/[0.04] p-5 rounded-2xl border border-white/10">
         <h2 className="font-bold mb-3">Quick Actions</h2>
         <div className="space-y-2 text-sm">
-          <a
+          <Link
             href="/admin/series"
             className="block bg-brand-gradient text-center py-3 rounded-xl font-bold"
           >
             Manage series & episodes
-          </a>
-          <a
+          </Link>
+          <Link
             href="/admin/pricing"
             className="block bg-white/[0.06] text-center py-3 rounded-xl font-semibold"
           >
             Manage prices & packs
-          </a>
+          </Link>
         </div>
       </div>
     </div>
