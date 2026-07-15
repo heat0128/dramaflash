@@ -29,14 +29,22 @@ export default async function FavoritesPage() {
         ) : (
           <div className="grid grid-cols-3 gap-2 px-4">
             {series.map((s: any) => (
-              <Link key={s.id} href={`/series/${s.id}`}
-                className="aspect-[2/3] rounded-xl relative overflow-hidden flex items-end p-2 bg-gradient-to-br from-purple-900/40 to-black">
+              <Link
+                key={s.id}
+                href={`/series/${s.id}`}
+                className="aspect-[2/3] rounded-xl relative overflow-hidden flex items-end p-2 bg-gradient-to-br from-purple-900/40 to-black"
+              >
                 {s.vertical_cover_url && (
-                  <img src={s.vertical_cover_url} alt={s.title}
-                    className="absolute inset-0 w-full h-full object-cover"/>
+                  <img
+                    src={s.vertical_cover_url}
+                    alt={s.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent"/>
-                <div className="relative z-10 text-[11px] font-bold leading-tight line-clamp-2">{s.title}</div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent" />
+                <div className="relative z-10 text-[11px] font-bold leading-tight line-clamp-2">
+                  {s.title}
+                </div>
               </Link>
             ))}
           </div>

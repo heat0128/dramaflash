@@ -12,7 +12,10 @@ export async function compressImage(
 
   const img = await loadImage(file)
 
-  let sx = 0, sy = 0, sw = img.width, sh = img.height
+  let sx = 0,
+    sy = 0,
+    sw = img.width,
+    sh = img.height
   if (aspect) {
     const srcAspect = img.width / img.height
     if (srcAspect > aspect) {
@@ -26,7 +29,7 @@ export async function compressImage(
     }
   }
 
-  const outAspect = aspect ?? (sw / sh)
+  const outAspect = aspect ?? sw / sh
   const outW = Math.min(maxWidth, sw)
   const outH = Math.round(outW / outAspect)
 
@@ -49,8 +52,14 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
-    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e) }
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(img)
+    }
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url)
+      reject(e)
+    }
     img.src = url
   })
 }

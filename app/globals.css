@@ -7,7 +7,8 @@
   --safe-bottom: env(safe-area-inset-bottom);
 }
 
-html, body {
+html,
+body {
   background: #000;
   color: #fff;
   -webkit-tap-highlight-color: transparent;
@@ -15,7 +16,7 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Mobile-first: lock to phone width on desktop */
@@ -35,8 +36,13 @@ body {
 }
 
 /* Hide scrollbars on feed */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* Snap feed */
 .snap-feed {
@@ -63,16 +69,34 @@ body {
 
 /* Animated dot */
 @keyframes pulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
 }
-.dot-pulse { animation: pulseDot 1.5s ease-in-out infinite; }
+.dot-pulse {
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
 
 /* Heart pop on double tap */
 @keyframes heartPop {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-15deg); }
-  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.3) rotate(-15deg); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1) rotate(-15deg) translateY(-40px); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3) rotate(-15deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.3) rotate(-15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1) rotate(-15deg) translateY(-40px);
+  }
 }
 .heart-pop {
   position: absolute;

@@ -10,7 +10,9 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const {
+      data: { user: authUser }
+    } = await supabase.auth.getUser()
     if (!authUser) return NextResponse.json({ error: 'Sign in to unlock' }, { status: 401 })
 
     const svc = createServiceClient()
@@ -30,8 +32,12 @@ export async function POST(req: Request) {
     }
 
     // Already unlocked?
-    const { data: existing } = await svc.from('unlocks')
-      .select('id').eq('user_id', authUser.id).eq('episode_id', episodeId).maybeSingle()
+    const { data: existing } = await svc
+      .from('unlocks')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .eq('episode_id', episodeId)
+      .maybeSingle()
     if (existing) return NextResponse.json({ ok: true, coins: profile.coins })
 
     if (method === 'coin') {
@@ -40,11 +46,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Not enough coins' }, { status: 402 })
       }
       // Deduct + insert unlock
-      const { error: e1 } = await svc.from('profiles')
-        .update({ coins: profile.coins - price }).eq('id', authUser.id)
+      const { error: e1 } = await svc
+        .from('profiles')
+        .update({ coins: profile.coins - price })
+        .eq('id', authUser.id)
       if (e1) throw e1
       await svc.from('unlocks').insert({
-        user_id: authUser.id, episode_id: episodeId, method: 'coin', coins_spent: price
+        user_id: authUser.id,
+        episode_id: episodeId,
+        method: 'coin',
+        coins_spent: price
       })
       return NextResponse.json({ ok: true, coins: profile.coins - price })
     }
@@ -52,7 +63,10 @@ export async function POST(req: Request) {
     if (method === 'ad') {
       // Trust server-side that ad SDK confirmed completion (in prod, verify ad reward callback)
       await svc.from('unlocks').insert({
-        user_id: authUser.id, episode_id: episodeId, method: 'ad', coins_spent: 0
+        user_id: authUser.id,
+        episode_id: episodeId,
+        method: 'ad',
+        coins_spent: 0
       })
       return NextResponse.json({ ok: true, coins: profile.coins })
     }

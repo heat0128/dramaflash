@@ -13,10 +13,16 @@ export default async function WalletPage() {
   const vipActive = isVipActive(user)
 
   const { data: packs } = await supabase
-    .from('coin_packs').select('*').eq('is_active', true).order('display_order')
+    .from('coin_packs')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order')
 
   const { data: plans } = await supabase
-    .from('subscription_plans').select('*').eq('is_active', true).order('display_order')
+    .from('subscription_plans')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order')
 
   // Ad-reward settings + today's count
   const { data: settingsRows } = await supabase.from('app_settings').select('key, value')
@@ -30,7 +36,8 @@ export default async function WalletPage() {
   if (user && adEnabled) {
     const startOfDay = new Date()
     startOfDay.setUTCHours(0, 0, 0, 0)
-    const { count } = await supabase.from('ad_rewards')
+    const { count } = await supabase
+      .from('ad_rewards')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .gte('created_at', startOfDay.toISOString())
@@ -43,13 +50,19 @@ export default async function WalletPage() {
       <main className="pt-[68px] pb-[90px] min-h-screen">
         <h1 className="px-4 pt-4 text-lg font-extrabold">Wallet & VIP</h1>
 
-        <div className="mx-4 mt-4 p-5 rounded-2xl relative overflow-hidden"
+        <div
+          className="mx-4 mt-4 p-5 rounded-2xl relative overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #1a1a1a, #2a1a1a)',
             border: '1px solid rgba(255,200,58,0.2)'
-          }}>
-          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full"
-            style={{ background: 'radial-gradient(circle, rgba(255,200,58,0.15), transparent 70%)' }}/>
+          }}
+        >
+          <div
+            className="absolute -top-10 -right-10 w-40 h-40 rounded-full"
+            style={{
+              background: 'radial-gradient(circle, rgba(255,200,58,0.15), transparent 70%)'
+            }}
+          />
           <div className="relative">
             <div className="text-[11px] tracking-widest font-bold text-brand-gold mb-1.5">
               VIP MEMBERSHIP
@@ -84,10 +97,11 @@ export default async function WalletPage() {
 
         <SectionHeader title="Subscribe to VIP · Watch unlimited" />
         <div className="px-4 space-y-2.5">
-          {(plans || []).map(plan => (
+          {(plans || []).map((plan) => (
             <CheckoutButton
               key={plan.id}
-              type="subscription" itemId={plan.id}
+              type="subscription"
+              itemId={plan.id}
               className={`w-full p-4 rounded-2xl flex items-center justify-between border ${
                 plan.is_featured
                   ? 'bg-gradient-to-br from-brand-pink/10 to-brand-orange/5 border-brand-pink/30'
@@ -103,19 +117,18 @@ export default async function WalletPage() {
                   {plan.coins_included > 0 && ` · ${plan.coins_included} coins included`}
                 </div>
               </div>
-              <div className="text-base font-extrabold text-brand-orange">
-                ${plan.price_usd}
-              </div>
+              <div className="text-base font-extrabold text-brand-orange">${plan.price_usd}</div>
             </CheckoutButton>
           ))}
         </div>
 
         <SectionHeader title="Recharge Coins" />
         <div className="grid grid-cols-2 gap-2.5 px-4">
-          {(packs || []).map(pack => (
+          {(packs || []).map((pack) => (
             <CheckoutButton
               key={pack.id}
-              type="coin_pack" itemId={pack.id}
+              type="coin_pack"
+              itemId={pack.id}
               className={`p-4 rounded-2xl text-center relative border-2 transition-transform active:scale-[0.97] ${
                 pack.label
                   ? 'bg-gradient-to-br from-brand-gold/10 to-transparent border-brand-gold'

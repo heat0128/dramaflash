@@ -4,7 +4,9 @@ import { createClient, createServiceClient } from '@/lib/supabase/server'
 export async function POST() {
   try {
     const supabase = createClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const {
+      data: { user: authUser }
+    } = await supabase.auth.getUser()
     if (!authUser) return NextResponse.json({ error: 'Please sign in first' }, { status: 401 })
 
     const svc = createServiceClient()
@@ -24,21 +26,30 @@ export async function POST() {
     // Count today's rewards (UTC day)
     const startOfDay = new Date()
     startOfDay.setUTCHours(0, 0, 0, 0)
-    const { count } = await svc.from('ad_rewards')
+    const { count } = await svc
+      .from('ad_rewards')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', authUser.id)
       .gte('created_at', startOfDay.toISOString())
 
     const watchedToday = count || 0
     if (watchedToday >= dailyLimit) {
-      return NextResponse.json({
-        error: `Daily limit reached (${dailyLimit}/day). Come back tomorrow!`,
-        watchedToday, dailyLimit
-      }, { status: 429 })
+      return NextResponse.json(
+        {
+          error: `Daily limit reached (${dailyLimit}/day). Come back tomorrow!`,
+          watchedToday,
+          dailyLimit
+        },
+        { status: 429 }
+      )
     }
 
     // Credit coins + log
-    const { data: profile } = await svc.from('profiles').select('coins').eq('id', authUser.id).single()
+    const { data: profile } = await svc
+      .from('profiles')
+      .select('coins')
+      .eq('id', authUser.id)
+      .single()
     const newBalance = (profile?.coins || 0) + rewardCoins
     await svc.from('profiles').update({ coins: newBalance }).eq('id', authUser.id)
     await svc.from('ad_rewards').insert({ user_id: authUser.id, coins: rewardCoins })

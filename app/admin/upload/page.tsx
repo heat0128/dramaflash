@@ -1,2 +1,4 @@
 import { redirect } from 'next/navigation'
-export default function UploadRedirect() { redirect('/admin/series') }
+export default function UploadRedirect() {
+  redirect('/admin/series')
+}

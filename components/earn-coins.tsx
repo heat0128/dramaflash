@@ -5,9 +5,15 @@ import { useToast } from '@/components/toast'
 import { Play, Gift } from 'lucide-react'
 
 export function EarnCoins({
-  rewardCoins, dailyLimit, watchedToday: initialWatched, enabled
+  rewardCoins,
+  dailyLimit,
+  watchedToday: initialWatched,
+  enabled
 }: {
-  rewardCoins: number; dailyLimit: number; watchedToday: number; enabled: boolean
+  rewardCoins: number
+  dailyLimit: number
+  watchedToday: number
+  enabled: boolean
 }) {
   const [watched, setWatched] = useState(initialWatched)
   const [showAd, setShowAd] = useState(false)
@@ -21,12 +27,15 @@ export function EarnCoins({
   useEffect(() => {
     if (!showAd) return
     if (countdown <= 0) return
-    const t = setTimeout(() => setCountdown(c => c - 1), 1000)
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000)
     return () => clearTimeout(t)
   }, [showAd, countdown])
 
   const openAd = () => {
-    if (remaining <= 0) { toast('Daily limit reached, come back tomorrow'); return }
+    if (remaining <= 0) {
+      toast('Daily limit reached, come back tomorrow')
+      return
+    }
     setCountdown(5)
     setShowAd(true)
   }
@@ -36,7 +45,12 @@ export function EarnCoins({
     try {
       const res = await fetch('/api/watch-ad', { method: 'POST' })
       const json = await res.json()
-      if (!res.ok) { toast(json.error || 'Failed'); setShowAd(false); setCrediting(false); return }
+      if (!res.ok) {
+        toast(json.error || 'Failed')
+        setShowAd(false)
+        setCrediting(false)
+        return
+      }
       setWatched(json.watchedToday)
       toast(`+${json.earned} coins earned!`)
       // reflect new balance in the top bar coin pill if present
@@ -52,15 +66,19 @@ export function EarnCoins({
 
   return (
     <>
-      <button onClick={openAd}
-        className="w-full mx-0 p-4 rounded-2xl flex items-center justify-between border border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent active:scale-[0.98] transition">
+      <button
+        onClick={openAd}
+        className="w-full mx-0 p-4 rounded-2xl flex items-center justify-between border border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 to-transparent active:scale-[0.98] transition"
+      >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-gold/20 flex items-center justify-center">
             <Gift size={20} className="text-brand-gold" />
           </div>
           <div className="text-left">
             <div className="text-sm font-bold">Watch an ad, earn {rewardCoins} coins</div>
-            <div className="text-[11px] opacity-60">{remaining} of {dailyLimit} left today</div>
+            <div className="text-[11px] opacity-60">
+              {remaining} of {dailyLimit} left today
+            </div>
           </div>
         </div>
         <div className="text-xs font-bold text-brand-gold flex items-center gap-1">
@@ -86,8 +104,11 @@ export function EarnCoins({
               <div className="text-sm opacity-60">Watch to earn {rewardCoins} coins</div>
             </div>
           ) : (
-            <button onClick={claim} disabled={crediting}
-              className="bg-brand-gradient px-8 py-3.5 rounded-full font-bold text-base disabled:opacity-60">
+            <button
+              onClick={claim}
+              disabled={crediting}
+              className="bg-brand-gradient px-8 py-3.5 rounded-full font-bold text-base disabled:opacity-60"
+            >
               {crediting ? 'Claiming...' : `Claim ${rewardCoins} coins`}
             </button>
           )}

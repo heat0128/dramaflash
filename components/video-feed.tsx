@@ -37,61 +37,85 @@ export function VideoFeed({
     const root = containerRef.current
     if (!root) return
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const idx = Number(entry.target.getAttribute('data-idx'))
-        const v = videoRefs.current[idx]
-        if (!v) return
-        if (entry.intersectionRatio > 0.7) {
-          setActiveIdx(idx)
-          // only auto-play if unlocked
-          if (items[idx]?.isUnlocked) {
-            v.currentTime = 0
-            v.play().catch(() => { /* user must interact first */ })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const idx = Number(entry.target.getAttribute('data-idx'))
+          const v = videoRefs.current[idx]
+          if (!v) return
+          if (entry.intersectionRatio > 0.7) {
+            setActiveIdx(idx)
+            // only auto-play if unlocked
+            if (items[idx]?.isUnlocked) {
+              v.currentTime = 0
+              v.play().catch(() => {
+                /* user must interact first */
+              })
+            }
+          } else {
+            v.pause()
           }
-        } else {
-          v.pause()
-        }
-      })
-    }, { threshold: [0, 0.7, 1] })
+        })
+      },
+      { threshold: [0, 0.7, 1] }
+    )
 
-    root.querySelectorAll('[data-slide]').forEach(el => observer.observe(el))
+    root.querySelectorAll('[data-slide]').forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [items])
 
-  const unlockWithCoin = useCallback(async (episodeId: string) => {
-    const res = await fetch('/api/unlock', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ episodeId, method: 'coin' })
-    })
-    const json = await res.json()
-    if (!res.ok) { toast(json.error || 'Failed to unlock'); return }
-    setCoins(json.coins)
-    setItems(prev => prev.map(it => it.episode.id === episodeId ? { ...it, isUnlocked: true } : it))
-    toast('Unlocked!')
-  }, [toast])
-
-  const unlockWithAd = useCallback(async (episodeId: string) => {
-    toast('Loading ad...')
-    // In production: integrate an ad SDK here, then call /api/unlock with method: 'ad'
-    setTimeout(async () => {
+  const unlockWithCoin = useCallback(
+    async (episodeId: string) => {
       const res = await fetch('/api/unlock', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ episodeId, method: 'ad' })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ episodeId, method: 'coin' })
       })
       const json = await res.json()
-      if (!res.ok) { toast(json.error); return }
-      setItems(prev => prev.map(it => it.episode.id === episodeId ? { ...it, isUnlocked: true } : it))
-      toast('Unlocked via ad!')
-    }, 1500)
-  }, [toast])
+      if (!res.ok) {
+        toast(json.error || 'Failed to unlock')
+        return
+      }
+      setCoins(json.coins)
+      setItems((prev) =>
+        prev.map((it) => (it.episode.id === episodeId ? { ...it, isUnlocked: true } : it))
+      )
+      toast('Unlocked!')
+    },
+    [toast]
+  )
+
+  const unlockWithAd = useCallback(
+    async (episodeId: string) => {
+      toast('Loading ad...')
+      // In production: integrate an ad SDK here, then call /api/unlock with method: 'ad'
+      setTimeout(async () => {
+        const res = await fetch('/api/unlock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ episodeId, method: 'ad' })
+        })
+        const json = await res.json()
+        if (!res.ok) {
+          toast(json.error)
+          return
+        }
+        setItems((prev) =>
+          prev.map((it) => (it.episode.id === episodeId ? { ...it, isUnlocked: true } : it))
+        )
+        toast('Unlocked via ad!')
+      }, 1500)
+    },
+    [toast]
+  )
 
   return (
     <div
       ref={containerRef}
       className="snap-feed no-scrollbar"
       style={{
-        position: 'absolute', inset: 0,
+        position: 'absolute',
+        inset: 0,
         overflowY: 'scroll',
         background: '#000'
       }}
@@ -101,7 +125,9 @@ export function VideoFeed({
           key={item.episode.id}
           idx={idx}
           item={item}
-          videoRef={(el) => { videoRefs.current[idx] = el }}
+          videoRef={(el) => {
+            videoRefs.current[idx] = el
+          }}
           isActive={idx === activeIdx}
           shouldLoad={Math.abs(idx - activeIdx) <= 1}
           onUnlockCoin={() => unlockWithCoin(item.episode.id)}
@@ -115,7 +141,15 @@ export function VideoFeed({
 }
 
 function Slide({
-  idx, item, videoRef, isActive, shouldLoad, onUnlockCoin, onUnlockAd, isVip, currentCoins
+  idx,
+  item,
+  videoRef,
+  isActive,
+  shouldLoad,
+  onUnlockCoin,
+  onUnlockAd,
+  isVip,
+  currentCoins
 }: {
   idx: number
   item: FeedItem
@@ -140,30 +174,38 @@ function Slide({
   const lastTapRef = useRef(0)
   const { show: toast } = useToast()
 
-  useEffect(() => { setShowPaywall(!isUnlocked) }, [isUnlocked])
+  useEffect(() => {
+    setShowPaywall(!isUnlocked)
+  }, [isUnlocked])
 
   // Fetch a playable URL only for the current slide and the next/previous one.
   useEffect(() => {
     if (!isUnlocked || !shouldLoad || videoSrc) return
     fetch('/api/video-url', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ episodeId: episode.id })
     })
-      .then(r => r.json())
-      .then(j => { if (j.url) setVideoSrc(j.url) })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.url) setVideoSrc(j.url)
+      })
       .catch(() => {})
   }, [isUnlocked, shouldLoad, videoSrc, episode.id])
 
   // Load subtitle list for this episode
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('subtitles').select('lang, storage_path').eq('episode_id', episode.id)
+    supabase
+      .from('subtitles')
+      .select('lang, storage_path')
+      .eq('episode_id', episode.id)
       .then(({ data }) => {
         const list = (data as any[]) || []
         setSubs(list)
         // default subtitle = user's saved UI language, if available
         const pref = getSavedLang()
-        if (list.find(s => s.lang === pref)) setActiveSub(pref)
+        if (list.find((s) => s.lang === pref)) setActiveSub(pref)
       })
   }, [episode.id])
 
@@ -173,7 +215,7 @@ function Slide({
     if (!v || !v.textTracks) return
     for (let i = 0; i < v.textTracks.length; i++) {
       const tt = v.textTracks[i]
-      tt.mode = (tt.language === activeSub) ? 'showing' : 'hidden'
+      tt.mode = tt.language === activeSub ? 'showing' : 'hidden'
     }
   }, [activeSub, videoSrc, subs])
 
@@ -194,8 +236,13 @@ function Slide({
       // single tap = pause/play
       const v = slideRef.current?.querySelector('video') as HTMLVideoElement
       if (v) {
-        if (v.paused) { v.play(); setPaused(false) }
-        else { v.pause(); setPaused(true) }
+        if (v.paused) {
+          v.play()
+          setPaused(false)
+        } else {
+          v.pause()
+          setPaused(true)
+        }
       }
     }
     lastTapRef.current = now
@@ -215,7 +262,9 @@ function Slide({
   const share = async () => {
     const url = `${window.location.origin}/series/${series.id}`
     if (navigator.share) {
-      try { await navigator.share({ title: series.title, url }) } catch {}
+      try {
+        await navigator.share({ title: series.title, url })
+      } catch {}
     } else {
       await navigator.clipboard.writeText(url)
       toast('Link copied')
@@ -225,14 +274,18 @@ function Slide({
   return (
     <div
       ref={slideRef}
-      data-slide data-idx={idx}
+      data-slide
+      data-idx={idx}
       className="relative w-full h-screen flex items-center justify-center overflow-hidden"
       onClick={handleTap}
     >
       {/* Poster fallback */}
       {episode.thumbnail_url && (
-        <img src={episode.thumbnail_url} alt=""
-          className="absolute inset-0 w-full h-full object-cover"/>
+        <img
+          src={episode.thumbnail_url}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
       )}
 
       {/* Video */}
@@ -243,7 +296,7 @@ function Slide({
           isActive={isActive}
           className="absolute inset-0 w-full h-full object-cover"
           poster={episode.thumbnail_url || undefined}
-          tracks={subs.map(s => ({
+          tracks={subs.map((s) => ({
             key: s.lang,
             srcLang: s.lang,
             label: langLabel(s.lang),
@@ -253,13 +306,20 @@ function Slide({
       )}
 
       {/* Gradient overlay */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.9) 100%)' }}/>
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.9) 100%)'
+        }}
+      />
 
       {/* Pause indicator */}
       {paused && isUnlocked && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-black/45 backdrop-blur-xl flex items-center justify-center pointer-events-none">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+            <path d="M8 5v14l11-7z" />
+          </svg>
         </div>
       )}
 
@@ -268,7 +328,7 @@ function Slide({
         className="absolute left-4 z-10 flex items-center gap-1.5 bg-black/50 backdrop-blur-lg px-3 py-1.5 rounded-full text-xs font-semibold border border-white/10"
         style={{ top: 'calc(env(safe-area-inset-top) + 64px)' }}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-brand-pink dot-pulse"/>
+        <span className="w-1.5 h-1.5 rounded-full bg-brand-pink dot-pulse" />
         Ep {episode.episode_number} {episode.is_free && '· Free'}
       </div>
 
@@ -290,38 +350,65 @@ function Slide({
 
       {/* Action rail */}
       <div className="absolute right-3 z-10 flex flex-col gap-5 no-tap" style={{ bottom: '110px' }}>
-        <button onClick={(e) => { e.stopPropagation(); setLiked(!liked) }}
-          className="flex flex-col items-center gap-1">
-          <div className={clsx(
-            'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border transition-all',
-            liked ? 'bg-brand-pink/25 border-brand-pink' : 'bg-black/35 border-white/15'
-          )}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setLiked(!liked)
+          }}
+          className="flex flex-col items-center gap-1"
+        >
+          <div
+            className={clsx(
+              'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border transition-all',
+              liked ? 'bg-brand-pink/25 border-brand-pink' : 'bg-black/35 border-white/15'
+            )}
+          >
             <Heart size={22} className={liked ? 'text-brand-pink fill-brand-pink' : 'text-white'} />
           </div>
-          <span className="text-[11px] font-bold drop-shadow">{Number(series.like_count || 0).toLocaleString()}</span>
+          <span className="text-[11px] font-bold drop-shadow">
+            {Number(series.like_count || 0).toLocaleString()}
+          </span>
         </button>
 
-        <button onClick={(e) => { e.stopPropagation(); toggleFavorite() }}
-          className="flex flex-col items-center gap-1">
-          <div className={clsx(
-            'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border',
-            favorited ? 'bg-brand-orange/25 border-brand-orange' : 'bg-black/35 border-white/15'
-          )}>
-            <Bookmark size={22} className={favorited ? 'text-brand-orange fill-brand-orange' : 'text-white'} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            toggleFavorite()
+          }}
+          className="flex flex-col items-center gap-1"
+        >
+          <div
+            className={clsx(
+              'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border',
+              favorited ? 'bg-brand-orange/25 border-brand-orange' : 'bg-black/35 border-white/15'
+            )}
+          >
+            <Bookmark
+              size={22}
+              className={favorited ? 'text-brand-orange fill-brand-orange' : 'text-white'}
+            />
           </div>
           <span className="text-[11px] font-bold drop-shadow">Save</span>
         </button>
 
-        <button onClick={(e) => { e.stopPropagation(); share() }}
-          className="flex flex-col items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            share()
+          }}
+          className="flex flex-col items-center gap-1"
+        >
           <div className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md flex items-center justify-center border border-white/15">
             <Share2 size={20} />
           </div>
           <span className="text-[11px] font-bold drop-shadow">Share</span>
         </button>
 
-        <a href={`/series/${series.id}`} onClick={(e) => e.stopPropagation()}
-          className="flex flex-col items-center gap-1">
+        <a
+          href={`/series/${series.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex flex-col items-center gap-1"
+        >
           <div className="w-11 h-11 rounded-full bg-black/35 backdrop-blur-md flex items-center justify-center border border-white/15">
             <List size={20} />
           </div>
@@ -329,12 +416,19 @@ function Slide({
         </a>
 
         {subs.length > 0 && (
-          <button onClick={(e) => { e.stopPropagation(); setSubMenu(true) }}
-            className="flex flex-col items-center gap-1">
-            <div className={clsx(
-              'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border',
-              activeSub ? 'bg-brand-pink/25 border-brand-pink' : 'bg-black/35 border-white/15'
-            )}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setSubMenu(true)
+            }}
+            className="flex flex-col items-center gap-1"
+          >
+            <div
+              className={clsx(
+                'w-11 h-11 rounded-full backdrop-blur-md flex items-center justify-center border',
+                activeSub ? 'bg-brand-pink/25 border-brand-pink' : 'bg-black/35 border-white/15'
+              )}
+            >
               <Captions size={20} className={activeSub ? 'text-brand-pink' : 'text-white'} />
             </div>
             <span className="text-[11px] font-bold drop-shadow">CC</span>
@@ -344,19 +438,44 @@ function Slide({
 
       {/* Subtitle language menu */}
       {subMenu && (
-        <div className="absolute inset-0 z-30 bg-black/70 backdrop-blur flex items-end no-tap"
-          onClick={(e) => { e.stopPropagation(); setSubMenu(false) }}>
-          <div className="w-full bg-[#1c1c1e] rounded-t-3xl p-5 pb-8" onClick={e => e.stopPropagation()}>
+        <div
+          className="absolute inset-0 z-30 bg-black/70 backdrop-blur flex items-end no-tap"
+          onClick={(e) => {
+            e.stopPropagation()
+            setSubMenu(false)
+          }}
+        >
+          <div
+            className="w-full bg-[#1c1c1e] rounded-t-3xl p-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="text-base font-extrabold mb-3">Subtitles</div>
-            <button onClick={() => { setActiveSub(null); setSubMenu(false) }}
-              className={clsx('w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
-                !activeSub ? 'bg-brand-pink/20 text-brand-pink font-bold' : 'bg-white/[0.06]')}>
+            <button
+              onClick={() => {
+                setActiveSub(null)
+                setSubMenu(false)
+              }}
+              className={clsx(
+                'w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
+                !activeSub ? 'bg-brand-pink/20 text-brand-pink font-bold' : 'bg-white/[0.06]'
+              )}
+            >
               Off
             </button>
-            {subs.map(s => (
-              <button key={s.lang} onClick={() => { setActiveSub(s.lang); setSubMenu(false) }}
-                className={clsx('w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
-                  activeSub === s.lang ? 'bg-brand-pink/20 text-brand-pink font-bold' : 'bg-white/[0.06]')}>
+            {subs.map((s) => (
+              <button
+                key={s.lang}
+                onClick={() => {
+                  setActiveSub(s.lang)
+                  setSubMenu(false)
+                }}
+                className={clsx(
+                  'w-full text-left px-4 py-3 rounded-xl mb-1.5 text-sm',
+                  activeSub === s.lang
+                    ? 'bg-brand-pink/20 text-brand-pink font-bold'
+                    : 'bg-white/[0.06]'
+                )}
+              >
                 {langLabel(s.lang)}
               </button>
             ))}
@@ -380,7 +499,12 @@ function Slide({
 }
 
 function SmartVideoPlayer({
-  src, isActive, videoRef, className, poster, tracks
+  src,
+  isActive,
+  videoRef,
+  className,
+  poster,
+  tracks
 }: {
   src: string
   isActive: boolean
@@ -416,16 +540,26 @@ function SmartVideoPlayer({
       className={className}
       poster={poster}
     >
-      {tracks.map(track => (
-        <track key={track.key} kind="subtitles" srcLang={track.srcLang}
-          label={track.label} src={track.src} />
+      {tracks.map((track) => (
+        <track
+          key={track.key}
+          kind="subtitles"
+          srcLang={track.srcLang}
+          label={track.label}
+          src={track.src}
+        />
       ))}
     </VideoPlayer>
   )
 }
 
 function VideoPlayer({
-  src, isActive, videoRef, className, poster, children
+  src,
+  isActive,
+  videoRef,
+  className,
+  poster,
+  children
 }: {
   src: string
   isActive: boolean
@@ -449,24 +583,26 @@ function VideoPlayer({
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = src
       } else {
-        import('hls.js').then(({ default: Hls }) => {
-          if (disposed) return
-          if (!Hls.isSupported()) {
-            video.src = src
-            return
-          }
-          const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            maxBufferLength: 30,
-            backBufferLength: 30
+        import('hls.js')
+          .then(({ default: Hls }) => {
+            if (disposed) return
+            if (!Hls.isSupported()) {
+              video.src = src
+              return
+            }
+            const hls = new Hls({
+              enableWorker: true,
+              lowLatencyMode: true,
+              maxBufferLength: 30,
+              backBufferLength: 30
+            })
+            cleanup = () => hls.destroy()
+            hls.loadSource(src)
+            hls.attachMedia(video)
           })
-          cleanup = () => hls.destroy()
-          hls.loadSource(src)
-          hls.attachMedia(video)
-        }).catch(() => {
-          if (!disposed) video.src = src
-        })
+          .catch(() => {
+            if (!disposed) video.src = src
+          })
       }
     } else {
       video.src = src
@@ -504,14 +640,25 @@ function VideoPlayer({
 }
 
 function Paywall({
-  series, episode, currentCoins, isVip, onCoin, onAd
+  series,
+  episode,
+  currentCoins,
+  isVip,
+  onCoin,
+  onAd
 }: {
-  series: Series; episode: Episode; currentCoins: number; isVip: boolean
-  onCoin: () => void; onAd: () => void
+  series: Series
+  episode: Episode
+  currentCoins: number
+  isVip: boolean
+  onCoin: () => void
+  onAd: () => void
 }) {
   return (
-    <div className="absolute inset-0 z-20 bg-black/85 backdrop-blur flex flex-col items-center justify-center px-8 no-tap"
-      onClick={(e) => e.stopPropagation()}>
+    <div
+      className="absolute inset-0 z-20 bg-black/85 backdrop-blur flex flex-col items-center justify-center px-8 no-tap"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="w-16 h-16 rounded-full bg-brand-gradient flex items-center justify-center mb-4 shadow-2xl shadow-brand-pink/40">
         <Lock size={26} />
       </div>
@@ -521,8 +668,10 @@ function Paywall({
       </p>
 
       <div className="w-full flex flex-col gap-2.5">
-        <button onClick={onCoin}
-          className="bg-gradient-to-br from-brand-pink/15 to-brand-orange/15 border border-brand-pink/40 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition">
+        <button
+          onClick={onCoin}
+          className="bg-gradient-to-br from-brand-pink/15 to-brand-orange/15 border border-brand-pink/40 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition"
+        >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
               <span className="text-brand-gold font-black">¤</span>
@@ -535,8 +684,10 @@ function Paywall({
           <div className="text-sm font-bold text-brand-orange">{series.coin_price} coins</div>
         </button>
 
-        <a href="/wallet"
-          className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition">
+        <a
+          href="/wallet"
+          className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition"
+        >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
               <span className="text-brand-orange">★</span>
@@ -549,8 +700,10 @@ function Paywall({
           <div className="text-sm font-bold text-brand-gold">From $4.99</div>
         </a>
 
-        <button onClick={onAd}
-          className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition">
+        <button
+          onClick={onAd}
+          className="bg-white/[0.06] border border-white/10 px-4 py-3.5 rounded-2xl flex items-center justify-between active:scale-[0.98] transition"
+        >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
               <span>▶</span>

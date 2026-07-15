@@ -8,7 +8,9 @@ export async function POST(req: Request) {
     if (!type || !itemId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
     const supabase = createClient()
-    const { data: { user: authUser } } = await supabase.auth.getUser()
+    const {
+      data: { user: authUser }
+    } = await supabase.auth.getUser()
     if (!authUser) return NextResponse.json({ error: 'Please sign in first' }, { status: 401 })
 
     const svc = createServiceClient()
@@ -31,7 +33,11 @@ export async function POST(req: Request) {
         quantity: 1
       }
     } else if (type === 'subscription') {
-      const { data: plan } = await svc.from('subscription_plans').select('*').eq('id', itemId).single()
+      const { data: plan } = await svc
+        .from('subscription_plans')
+        .select('*')
+        .eq('id', itemId)
+        .single()
       if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
       metadata.durationDays = String(plan.duration_days)
       metadata.coinsIncluded = String(plan.coins_included)

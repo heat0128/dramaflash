@@ -25,13 +25,13 @@ export function TabBar() {
         backdropFilter: 'blur(30px)'
       }}
     >
-      {TABS.map(tab => {
+      {TABS.map((tab) => {
         const Icon = tab.icon
-        const active = pathname === tab.href ||
-                       (tab.href !== '/' && pathname.startsWith(tab.href))
+        const active = pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href))
         return (
           <Link
-            key={tab.href} href={tab.href}
+            key={tab.href}
+            href={tab.href}
             className={clsx(
               'flex-1 flex flex-col items-center gap-1 py-1.5 transition-opacity',
               active ? 'opacity-100' : 'opacity-50'

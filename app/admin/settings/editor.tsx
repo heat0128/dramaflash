@@ -19,7 +19,8 @@ export function SettingsEditor({ initial }: { initial: Record<string, string> })
     for (const u of updates) {
       await supabase.from('app_settings').update({ value: u.value }).eq('key', u.key)
     }
-    setMsg('Saved ✓'); setTimeout(() => setMsg(''), 1500)
+    setMsg('Saved ✓')
+    setTimeout(() => setMsg(''), 1500)
   }
 
   return (
@@ -33,21 +34,33 @@ export function SettingsEditor({ initial }: { initial: Record<string, string> })
         <h2 className="font-bold">Watch-Ad Rewards</h2>
 
         <label className="flex items-center justify-between">
-          <span className="text-sm">Enable "watch ad to earn coins"</span>
-          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)}
-            className="w-5 h-5" />
+          <span className="text-sm">Enable &quot;watch ad to earn coins&quot;</span>
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+            className="w-5 h-5"
+          />
         </label>
 
         <label className="block">
           <span className="text-xs opacity-60 block mb-1">Coins per ad</span>
-          <input type="number" value={reward} onChange={e => setReward(e.target.value)}
-            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+          <input
+            type="number"
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+          />
         </label>
 
         <label className="block">
           <span className="text-xs opacity-60 block mb-1">Max ads per user per day</span>
-          <input type="number" value={limit} onChange={e => setLimit(e.target.value)}
-            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none" />
+          <input
+            type="number"
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+          />
         </label>
 
         <button onClick={save} className="w-full bg-brand-gradient py-3 rounded-xl font-bold">
@@ -57,7 +70,8 @@ export function SettingsEditor({ initial }: { initial: Record<string, string> })
 
       <p className="text-xs opacity-50">
         Note: the ad shown is currently a demo placeholder. Once you connect a real ad network
-        (AdSense / Adsterra / PropellerAds), the reward stays the same — only the video player is swapped.
+        (AdSense / Adsterra / PropellerAds), the reward stays the same — only the video player is
+        swapped.
       </p>
     </div>
   )

@@ -17,7 +17,10 @@ export default async function ProfilePage() {
   if (user) {
     const [{ count: favCount }, { count: histCount }] = await Promise.all([
       supabase.from('favorites').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
-      supabase.from('watch_history').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+      supabase
+        .from('watch_history')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
     ])
     stats = { favorites: favCount || 0, watched: histCount || 0 }
   }

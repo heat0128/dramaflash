@@ -18,9 +18,10 @@ export default async function HomePage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  const seriesIds = (series || []).map(s => s.id)
+  const seriesIds = (series || []).map((s) => s.id)
   const { data: episodes } = seriesIds.length
-    ? await supabase.from('episodes')
+    ? await supabase
+        .from('episodes')
         .select('*')
         .in('series_id', seriesIds)
         .lte('episode_number', 1)
@@ -31,16 +32,16 @@ export default async function HomePage() {
   let unlockedIds = new Set<string>()
   if (user) {
     const { data: unlocks } = await supabase
-      .from('unlocks').select('episode_id').eq('user_id', user.id)
-    unlockedIds = new Set((unlocks || []).map(u => u.episode_id))
+      .from('unlocks')
+      .select('episode_id')
+      .eq('user_id', user.id)
+    unlockedIds = new Set((unlocks || []).map((u) => u.episode_id))
   }
 
-  const feedItems = (episodes || []).map(ep => {
-    const s = series!.find(s => s.id === ep.series_id)!
-    const isUnlocked = ep.is_free
-      || ep.episode_number <= s.free_episodes
-      || unlockedIds.has(ep.id)
-      || vipActive
+  const feedItems = (episodes || []).map((ep) => {
+    const s = series!.find((s) => s.id === ep.series_id)!
+    const isUnlocked =
+      ep.is_free || ep.episode_number <= s.free_episodes || unlockedIds.has(ep.id) || vipActive
     return { episode: ep, series: s, isUnlocked }
   })
 
@@ -48,11 +49,7 @@ export default async function HomePage() {
     <>
       <TopBar coins={user?.coins ?? 0} transparent />
       {feedItems.length > 0 ? (
-        <VideoFeed
-          initialItems={feedItems}
-          initialCoins={user?.coins ?? 0}
-          isVip={vipActive}
-        />
+        <VideoFeed initialItems={feedItems} initialCoins={user?.coins ?? 0} isVip={vipActive} />
       ) : (
         <EmptyState />
       )}
@@ -68,7 +65,10 @@ function EmptyState() {
       <p className="text-sm opacity-60">
         Sign in to the admin panel and upload your first series to get started.
       </p>
-      <a href="/admin" className="mt-6 px-5 py-2.5 rounded-full bg-brand-gradient text-sm font-bold">
+      <a
+        href="/admin"
+        className="mt-6 px-5 py-2.5 rounded-full bg-brand-gradient text-sm font-bold"
+      >
         Go to Admin
       </a>
     </div>

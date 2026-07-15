@@ -18,7 +18,11 @@ export default async function AdminDashboard() {
     svc.from('series').select('*', { count: 'exact', head: true }),
     svc.from('episodes').select('*', { count: 'exact', head: true }),
     svc.from('transactions').select('amount_usd').eq('status', 'succeeded'),
-    svc.from('series').select('id, title, view_count').order('view_count', { ascending: false }).limit(5),
+    svc
+      .from('series')
+      .select('id, title, view_count')
+      .order('view_count', { ascending: false })
+      .limit(5),
     svc.from('unlocks').select('coins_spent, episode:episode_id(series_id)').eq('method', 'coin')
   ])
 
@@ -30,12 +34,22 @@ export default async function AdminDashboard() {
     const sid = row.episode?.series_id
     if (sid) earnMap[sid] = (earnMap[sid] || 0) + (row.coins_spent || 0)
   }
-  const topEarnIds = Object.entries(earnMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const topEarnIds = Object.entries(earnMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
   let topEarnSeries: { id: string; title: string; coins: number }[] = []
   if (topEarnIds.length) {
-    const { data: ts } = await svc.from('series').select('id, title').in('id', topEarnIds.map(e => e[0]))
+    const { data: ts } = await svc
+      .from('series')
+      .select('id, title')
+      .in(
+        'id',
+        topEarnIds.map((e) => e[0])
+      )
     topEarnSeries = topEarnIds.map(([id, coins]) => ({
-      id, coins, title: (ts || []).find((s: any) => s.id === id)?.title || '—'
+      id,
+      coins,
+      title: (ts || []).find((s: any) => s.id === id)?.title || '—'
     }))
   }
 
@@ -51,22 +65,50 @@ export default async function AdminDashboard() {
       </div>
 
       <Panel title="🔥 Most Watched Series">
-        {(topViewed || []).length === 0 ? <Empty /> : (topViewed || []).map((s: any, i: number) => (
-          <Row key={s.id} rank={i + 1} name={s.title} value={`${Number(s.view_count).toLocaleString()} views`} />
-        ))}
+        {(topViewed || []).length === 0 ? (
+          <Empty />
+        ) : (
+          (topViewed || []).map((s: any, i: number) => (
+            <Row
+              key={s.id}
+              rank={i + 1}
+              name={s.title}
+              value={`${Number(s.view_count).toLocaleString()} views`}
+            />
+          ))
+        )}
       </Panel>
 
       <Panel title="💰 Top Earning Series (by coins unlocked)">
-        {topEarnSeries.length === 0 ? <Empty /> : topEarnSeries.map((s, i) => (
-          <Row key={s.id} rank={i + 1} name={s.title} value={`${s.coins.toLocaleString()} coins`} />
-        ))}
+        {topEarnSeries.length === 0 ? (
+          <Empty />
+        ) : (
+          topEarnSeries.map((s, i) => (
+            <Row
+              key={s.id}
+              rank={i + 1}
+              name={s.title}
+              value={`${s.coins.toLocaleString()} coins`}
+            />
+          ))
+        )}
       </Panel>
 
       <div className="bg-white/[0.04] p-5 rounded-2xl border border-white/10">
         <h2 className="font-bold mb-3">Quick Actions</h2>
         <div className="space-y-2 text-sm">
-          <a href="/admin/series" className="block bg-brand-gradient text-center py-3 rounded-xl font-bold">Manage series & episodes</a>
-          <a href="/admin/pricing" className="block bg-white/[0.06] text-center py-3 rounded-xl font-semibold">Manage prices & packs</a>
+          <a
+            href="/admin/series"
+            className="block bg-brand-gradient text-center py-3 rounded-xl font-bold"
+          >
+            Manage series & episodes
+          </a>
+          <a
+            href="/admin/pricing"
+            className="block bg-white/[0.06] text-center py-3 rounded-xl font-semibold"
+          >
+            Manage prices & packs
+          </a>
         </div>
       </div>
     </div>
@@ -98,4 +140,6 @@ function Row({ rank, name, value }: { rank: number; name: string; value: string 
     </div>
   )
 }
-function Empty() { return <div className="text-xs opacity-40 py-2">No data yet</div> }
+function Empty() {
+  return <div className="text-xs opacity-40 py-2">No data yet</div>
+}

@@ -28,11 +28,18 @@ export default async function HistoryPage() {
         ) : (
           <div className="px-4 space-y-2">
             {history.map((h: any) => (
-              <Link key={h.episode_id} href={`/watch/${h.episode_id}`}
-                className="flex items-center gap-3 bg-white/[0.04] border border-white/10 rounded-xl p-3">
+              <Link
+                key={h.episode_id}
+                href={`/watch/${h.episode_id}`}
+                className="flex items-center gap-3 bg-white/[0.04] border border-white/10 rounded-xl p-3"
+              >
                 <div className="w-12 h-16 rounded-lg bg-gradient-to-br from-purple-900 to-black flex-shrink-0 overflow-hidden">
                   {h.series?.vertical_cover_url && (
-                    <img src={h.series.vertical_cover_url} alt="" className="w-full h-full object-cover"/>
+                    <img
+                      src={h.series.vertical_cover_url}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

@@ -4,7 +4,10 @@ import { useState } from 'react'
 import { useToast } from '@/components/toast'
 
 export function CheckoutButton({
-  type, itemId, children, className
+  type,
+  itemId,
+  children,
+  className
 }: {
   type: 'coin_pack' | 'subscription'
   itemId: string
@@ -23,7 +26,11 @@ export function CheckoutButton({
         body: JSON.stringify({ type, itemId })
       })
       const json = await res.json()
-      if (!res.ok) { toast(json.error || 'Failed to start checkout'); setLoading(false); return }
+      if (!res.ok) {
+        toast(json.error || 'Failed to start checkout')
+        setLoading(false)
+        return
+      }
       window.location.href = json.url
     } catch (e: any) {
       toast(e.message || 'Network error')

@@ -3,7 +3,13 @@
 import Link from 'next/link'
 import { Search, Coins } from 'lucide-react'
 
-export function TopBar({ coins = 0, transparent = false }: { coins?: number; transparent?: boolean }) {
+export function TopBar({
+  coins = 0,
+  transparent = false
+}: {
+  coins?: number
+  transparent?: boolean
+}) {
   return (
     <header
       className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] flex items-center justify-between px-4 z-30"
@@ -29,7 +35,9 @@ export function TopBar({ coins = 0, transparent = false }: { coins?: number; tra
           <Coins size={14} className="text-brand-gold" />
           <span>{coins}</span>
         </Link>
-        <Link href="/search"><Search size={22} /></Link>
+        <Link href="/search">
+          <Search size={22} />
+        </Link>
       </div>
     </header>
   )

@@ -3,10 +3,11 @@ import type { Profile } from '@/lib/types'
 
 export async function getCurrentUser() {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
   if (!user) return null
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   return profile as Profile | null
 }
 
@@ -20,7 +21,9 @@ export async function requireAdmin() {
   const user = await getCurrentUser()
   if (!user) throw new Error('UNAUTHENTICATED')
   const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',').map(s => s.trim()).filter(Boolean)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
   if (user.is_admin || (user.email && adminEmails.includes(user.email))) return user
   throw new Error('FORBIDDEN')
 }

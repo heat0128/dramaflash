@@ -4,14 +4,20 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminRevenue() {
   const svc = createServiceClient()
-  const { data: txs } = await svc.from('transactions')
-    .select('*').eq('status', 'succeeded').order('created_at', { ascending: false }).limit(100)
+  const { data: txs } = await svc
+    .from('transactions')
+    .select('*')
+    .eq('status', 'succeeded')
+    .order('created_at', { ascending: false })
+    .limit(100)
 
   const total = (txs || []).reduce((s, t) => s + Number(t.amount_usd), 0)
-  const last30 = (txs || []).filter(t => {
-    const d = new Date(t.created_at)
-    return d.getTime() > Date.now() - 30 * 86400_000
-  }).reduce((s, t) => s + Number(t.amount_usd), 0)
+  const last30 = (txs || [])
+    .filter((t) => {
+      const d = new Date(t.created_at)
+      return d.getTime() > Date.now() - 30 * 86400_000
+    })
+    .reduce((s, t) => s + Number(t.amount_usd), 0)
 
   return (
     <div>
@@ -29,11 +35,16 @@ export default async function AdminRevenue() {
 
       <h2 className="font-bold mb-3">Recent transactions</h2>
       <div className="space-y-2">
-        {(txs || []).map(t => (
-          <div key={t.id} className="bg-white/[0.04] p-3 rounded-xl border border-white/10 flex justify-between">
+        {(txs || []).map((t) => (
+          <div
+            key={t.id}
+            className="bg-white/[0.04] p-3 rounded-xl border border-white/10 flex justify-between"
+          >
             <div>
               <div className="text-sm font-semibold">
-                {t.type === 'coin_pack' ? `+${t.coins_added} coins` : `VIP +${t.vip_days_added} days`}
+                {t.type === 'coin_pack'
+                  ? `+${t.coins_added} coins`
+                  : `VIP +${t.vip_days_added} days`}
               </div>
               <div className="text-[11px] opacity-50">
                 {new Date(t.created_at).toLocaleString()}

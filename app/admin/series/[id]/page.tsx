@@ -8,7 +8,10 @@ export default async function AdminSeriesEditPage({ params }: { params: { id: st
   const svc = createServiceClient()
   const { data: series } = await svc.from('series').select('*').eq('id', params.id).single()
   if (!series) notFound()
-  const { data: episodes } = await svc.from('episodes').select('*')
-    .eq('series_id', params.id).order('episode_number')
+  const { data: episodes } = await svc
+    .from('episodes')
+    .select('*')
+    .eq('series_id', params.id)
+    .order('episode_number')
   return <SeriesEditor series={series} episodes={episodes || []} />
 }

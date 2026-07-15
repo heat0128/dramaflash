@@ -27,8 +27,11 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ ok: true })
 
     // Idempotency check
-    const { data: existingTx } = await svc.from('transactions')
-      .select('id').eq('stripe_session_id', session.id).maybeSingle()
+    const { data: existingTx } = await svc
+      .from('transactions')
+      .select('id')
+      .eq('stripe_session_id', session.id)
+      .maybeSingle()
     if (existingTx) return NextResponse.json({ ok: true, duplicate: true })
 
     const { data: profile } = await svc.from('profiles').select('*').eq('id', userId).single()
@@ -38,11 +41,19 @@ export async function POST(req: Request) {
 
     if (md.type === 'coin_pack') {
       const coins = parseInt(md.coins || '0', 10)
-      await svc.from('profiles').update({ coins: profile.coins + coins }).eq('id', userId)
+      await svc
+        .from('profiles')
+        .update({ coins: profile.coins + coins })
+        .eq('id', userId)
       await svc.from('transactions').insert({
-        user_id: userId, type: 'coin_pack', amount_usd: amountUsd, coins_added: coins,
-        stripe_session_id: session.id, stripe_payment_intent: session.payment_intent as string,
-        status: 'succeeded', metadata: md as any
+        user_id: userId,
+        type: 'coin_pack',
+        amount_usd: amountUsd,
+        coins_added: coins,
+        stripe_session_id: session.id,
+        stripe_payment_intent: session.payment_intent as string,
+        status: 'succeeded',
+        metadata: md as any
       })
     } else if (md.type === 'subscription') {
       const days = parseInt(md.durationDays || '0', 10)
@@ -51,16 +62,24 @@ export async function POST(req: Request) {
       const currentExpiry = profile.vip_expires_at ? new Date(profile.vip_expires_at) : now
       const baseDate = currentExpiry > now ? currentExpiry : now
       const newExpiry = new Date(baseDate.getTime() + days * 86400_000)
-      await svc.from('profiles').update({
-        is_vip: true,
-        vip_expires_at: newExpiry.toISOString(),
-        coins: profile.coins + includedCoins
-      }).eq('id', userId)
+      await svc
+        .from('profiles')
+        .update({
+          is_vip: true,
+          vip_expires_at: newExpiry.toISOString(),
+          coins: profile.coins + includedCoins
+        })
+        .eq('id', userId)
       await svc.from('transactions').insert({
-        user_id: userId, type: 'subscription', amount_usd: amountUsd,
-        coins_added: includedCoins, vip_days_added: days,
-        stripe_session_id: session.id, stripe_payment_intent: session.payment_intent as string,
-        status: 'succeeded', metadata: md as any
+        user_id: userId,
+        type: 'subscription',
+        amount_usd: amountUsd,
+        coins_added: includedCoins,
+        vip_days_added: days,
+        stripe_session_id: session.id,
+        stripe_payment_intent: session.payment_intent as string,
+        status: 'succeeded',
+        metadata: md as any
       })
     }
   }

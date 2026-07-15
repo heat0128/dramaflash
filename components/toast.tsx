@@ -10,7 +10,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false)
 
   const show = useCallback((m: string) => {
-    setMsg(m); setVisible(true)
+    setMsg(m)
+    setVisible(true)
   }, [])
 
   useEffect(() => {
