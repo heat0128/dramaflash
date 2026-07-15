@@ -4,6 +4,11 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "NEXT_PUBLIC_SITE_URL": "https://bingego.com",
+    "NEXT_PUBLIC_SUPABASE_URL": "https://gbiegzlxgaamfmbaknjk.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_KxYi48KZ7uAzt6E19KnG-w_NMpXHxpX"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
