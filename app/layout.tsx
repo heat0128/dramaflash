@@ -34,7 +34,7 @@ const seoCopy: Record<LangCode, { title: string; description: string }> = {
 export function generateMetadata(): Metadata {
   const { locale } = getRequestMarket()
   const copy = seoCopy[locale]
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bingego.app'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bingego.com'
 
   return {
     metadataBase: new URL(siteUrl),
@@ -51,12 +51,15 @@ export function generateMetadata(): Metadata {
       title: copy.title,
       description: copy.description,
       type: 'website',
-      locale
+      locale,
+      siteName: 'BingeGo',
+      images: ['/logo.png']
     },
     twitter: {
       card: 'summary_large_image',
       title: copy.title,
-      description: copy.description
+      description: copy.description,
+      images: ['/logo.png']
     },
     icons: {
       icon: '/favicon.png',

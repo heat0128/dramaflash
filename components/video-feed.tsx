@@ -986,11 +986,11 @@ function Paywall({
               <span className="text-brand-orange">★</span>
             </div>
             <div className="text-left">
-              <div className="text-sm font-bold">Subscribe to VIP</div>
-              <div className="text-[11px] opacity-60">Unlimited episodes · No ads</div>
+              <div className="text-sm font-bold">VIP early access</div>
+              <div className="text-[11px] opacity-60">Payments are not available yet</div>
             </div>
           </div>
-          <div className="text-sm font-bold text-brand-gold">From $4.99</div>
+          <div className="text-sm font-bold text-brand-blue">Learn more</div>
         </a>
 
         {adRewardsEnabled && (

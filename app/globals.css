@@ -5,6 +5,10 @@
 :root {
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
+  --brand-coral: #ff4655;
+  --brand-pink: #f21f78;
+  --brand-purple: #a918d7;
+  --brand-blue: #27a7f2;
 }
 
 html,
@@ -57,14 +61,32 @@ body {
 
 /* Brand gradient text */
 .text-brand-gradient {
-  background: linear-gradient(135deg, #ff2d6e, #ff8a3d);
+  background: linear-gradient(
+    120deg,
+    var(--brand-coral),
+    var(--brand-pink) 42%,
+    var(--brand-purple) 70%,
+    var(--brand-blue)
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .bg-brand-gradient {
-  background: linear-gradient(135deg, #ff2d6e, #ff8a3d);
+  background: linear-gradient(
+    120deg,
+    var(--brand-coral),
+    var(--brand-pink) 42%,
+    var(--brand-purple) 70%,
+    var(--brand-blue)
+  );
+}
+
+.brand-ring {
+  box-shadow:
+    0 0 0 1px rgba(242, 31, 120, 0.2),
+    0 18px 60px rgba(169, 24, 215, 0.16);
 }
 
 /* Animated dot */

@@ -5,7 +5,7 @@ import { PUBLIC_LANGUAGES } from '@/lib/languages'
 export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bingego.app'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bingego.com'
   const service = createServiceClient()
   const { data } = await service
     .from('series')
@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .limit(5000)
 
   const staticRoutes = PUBLIC_LANGUAGES.flatMap((language) =>
-    ['', '/discover'].map((path) => ({
+    ['', '/discover', '/legal/privacy', '/legal/terms', '/legal/refunds'].map((path) => ({
       url: `${siteUrl}/${language.code}${path}`,
       lastModified: new Date(),
       changeFrequency: 'daily' as const,

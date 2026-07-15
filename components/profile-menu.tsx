@@ -1,7 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Crown, Bookmark, Clock, CreditCard, HelpCircle, Settings, Globe } from 'lucide-react'
+import {
+  Crown,
+  Bookmark,
+  Clock,
+  FileText,
+  HelpCircle,
+  Settings,
+  Globe,
+  ShieldCheck
+} from 'lucide-react'
 import { useI18n, LanguageSwitcher } from '@/lib/i18n'
 
 export function ProfileMenu({ vipActive, isAdmin }: { vipActive: boolean; isAdmin: boolean }) {
@@ -22,9 +31,13 @@ export function ProfileMenu({ vipActive, isAdmin }: { vipActive: boolean; isAdmi
       />
       <MenuItem href="/favorites" icon={<Bookmark size={18} />} label={t('profile.favorites')} />
       <MenuItem href="/history" icon={<Clock size={18} />} label={t('profile.history')} />
-      <MenuItem href="/billing" icon={<CreditCard size={18} />} label={t('profile.billing')} />
-      <MenuItem href="/help" icon={<HelpCircle size={18} />} label={t('profile.help')} />
-      <MenuItem href="/settings" icon={<Settings size={18} />} label={t('profile.settings')} />
+      <MenuItem
+        href="mailto:heatcolin@gmail.com"
+        icon={<HelpCircle size={18} />}
+        label={t('profile.help')}
+      />
+      <MenuItem href="/legal/privacy" icon={<ShieldCheck size={18} />} label="Privacy Policy" />
+      <MenuItem href="/legal/terms" icon={<FileText size={18} />} label="Terms & Refunds" />
       {isAdmin && (
         <MenuItem
           href="/admin"

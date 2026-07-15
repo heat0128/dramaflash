@@ -4,7 +4,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: { pink: '#ff2d6e', orange: '#ff8a3d', gold: '#ffc83a' }
+        brand: { pink: '#f21f78', orange: '#a918d7', blue: '#27a7f2', gold: '#ffc83a' }
       },
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
