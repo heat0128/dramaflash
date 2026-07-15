@@ -1,446 +1,281 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { LANGUAGES } from '@/lib/languages'
+import { createContext, useContext, useMemo } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { DEFAULT_LANGUAGE, LANGUAGES, isPublicLanguage, type LangCode } from '@/lib/languages'
 
-const STORAGE_KEY = 'bingego_lang'
+const STORAGE_KEY = 'dramaflash_locale'
 
-export function getSavedLang(): string {
-  if (typeof window === 'undefined') return 'en'
-  return localStorage.getItem(STORAGE_KEY) || 'en'
+const messages = {
+  en: {
+    'nav.home': 'Home',
+    'nav.discover': 'Discover',
+    'nav.wallet': 'Wallet',
+    'nav.me': 'Me',
+    'profile.language': 'Language',
+    'profile.getVip': 'Get VIP',
+    'profile.favorites': 'My Favorites',
+    'profile.history': 'Watch History',
+    'profile.billing': 'Billing',
+    'profile.help': 'Help & Feedback',
+    'profile.settings': 'Settings',
+    'home.continueWatching': 'Continue Watching',
+    'home.trending': 'Trending',
+    'home.new': 'New',
+    'home.popular': 'Popular',
+    'home.recommended': 'Recommended',
+    'home.latest': 'Latest',
+    'home.noDramas': 'No dramas yet',
+    'player.subtitles': 'Subtitles',
+    'player.off': 'Off',
+    'player.fullscreen': 'Full screen',
+    'player.rotate': 'Rotate',
+    'category.romance': 'Romance',
+    'category.billionaire': 'Billionaire',
+    'category.comedy': 'Comedy',
+    'category.revenge': 'Revenge',
+    'category.mafia': 'Mafia',
+    'category.fantasy': 'Fantasy',
+    'category.werewolf': 'Werewolf',
+    'category.family': 'Family',
+    'category.christian': 'Christian',
+    'category.drama': 'Drama'
+  },
+  ja: {
+    'nav.home': 'ホーム',
+    'nav.discover': '探す',
+    'nav.wallet': 'ウォレット',
+    'nav.me': 'マイページ',
+    'profile.language': '言語',
+    'profile.getVip': 'VIPになる',
+    'profile.favorites': 'お気に入り',
+    'profile.history': '視聴履歴',
+    'profile.billing': 'お支払い',
+    'profile.help': 'ヘルプ',
+    'profile.settings': '設定',
+    'home.continueWatching': '続きから見る',
+    'home.trending': 'トレンド',
+    'home.new': '新着',
+    'home.popular': '人気',
+    'home.recommended': 'おすすめ',
+    'home.latest': '最新',
+    'home.noDramas': '作品はまだありません',
+    'player.subtitles': '字幕',
+    'player.off': 'オフ',
+    'player.fullscreen': '全画面',
+    'player.rotate': '回転',
+    'category.romance': 'ロマンス',
+    'category.billionaire': '億万長者',
+    'category.comedy': 'コメディ',
+    'category.revenge': '復讐',
+    'category.mafia': 'マフィア',
+    'category.fantasy': 'ファンタジー',
+    'category.werewolf': 'ウェアウルフ',
+    'category.family': '家族',
+    'category.christian': 'クリスチャン',
+    'category.drama': 'ドラマ'
+  },
+  ko: {
+    'nav.home': '홈',
+    'nav.discover': '둘러보기',
+    'nav.wallet': '지갑',
+    'nav.me': '마이',
+    'profile.language': '언어',
+    'profile.getVip': 'VIP 가입',
+    'profile.favorites': '내 찜',
+    'profile.history': '시청 기록',
+    'profile.billing': '결제',
+    'profile.help': '도움말',
+    'profile.settings': '설정',
+    'home.continueWatching': '이어보기',
+    'home.trending': '인기 급상승',
+    'home.new': '신작',
+    'home.popular': '인기',
+    'home.recommended': '추천',
+    'home.latest': '최신',
+    'home.noDramas': '아직 작품이 없습니다',
+    'player.subtitles': '자막',
+    'player.off': '끄기',
+    'player.fullscreen': '전체 화면',
+    'player.rotate': '회전',
+    'category.romance': '로맨스',
+    'category.billionaire': '재벌',
+    'category.comedy': '코미디',
+    'category.revenge': '복수',
+    'category.mafia': '마피아',
+    'category.fantasy': '판타지',
+    'category.werewolf': '늑대인간',
+    'category.family': '가족',
+    'category.christian': '기독교',
+    'category.drama': '드라마'
+  },
+  th: {
+    'nav.home': 'หน้าแรก',
+    'nav.discover': 'ค้นหา',
+    'nav.wallet': 'กระเป๋าเงิน',
+    'nav.me': 'ฉัน',
+    'profile.language': 'ภาษา',
+    'profile.getVip': 'สมัคร VIP',
+    'profile.favorites': 'รายการโปรด',
+    'profile.history': 'ประวัติการรับชม',
+    'profile.billing': 'การชำระเงิน',
+    'profile.help': 'ช่วยเหลือ',
+    'profile.settings': 'การตั้งค่า',
+    'home.continueWatching': 'ดูต่อ',
+    'home.trending': 'กำลังมาแรง',
+    'home.new': 'ใหม่',
+    'home.popular': 'ยอดนิยม',
+    'home.recommended': 'แนะนำ',
+    'home.latest': 'ล่าสุด',
+    'home.noDramas': 'ยังไม่มีละคร',
+    'player.subtitles': 'คำบรรยาย',
+    'player.off': 'ปิด',
+    'player.fullscreen': 'เต็มหน้าจอ',
+    'player.rotate': 'หมุน',
+    'category.romance': 'โรแมนติก',
+    'category.billionaire': 'มหาเศรษฐี',
+    'category.comedy': 'ตลก',
+    'category.revenge': 'แก้แค้น',
+    'category.mafia': 'มาเฟีย',
+    'category.fantasy': 'แฟนตาซี',
+    'category.werewolf': 'มนุษย์หมาป่า',
+    'category.family': 'ครอบครัว',
+    'category.christian': 'คริสเตียน',
+    'category.drama': 'ดราม่า'
+  },
+  vi: {
+    'nav.home': 'Trang chủ',
+    'nav.discover': 'Khám phá',
+    'nav.wallet': 'Ví',
+    'nav.me': 'Tôi',
+    'profile.language': 'Ngôn ngữ',
+    'profile.getVip': 'Đăng ký VIP',
+    'profile.favorites': 'Yêu thích',
+    'profile.history': 'Lịch sử xem',
+    'profile.billing': 'Thanh toán',
+    'profile.help': 'Trợ giúp',
+    'profile.settings': 'Cài đặt',
+    'home.continueWatching': 'Xem tiếp',
+    'home.trending': 'Thịnh hành',
+    'home.new': 'Mới',
+    'home.popular': 'Phổ biến',
+    'home.recommended': 'Đề xuất',
+    'home.latest': 'Mới nhất',
+    'home.noDramas': 'Chưa có phim',
+    'player.subtitles': 'Phụ đề',
+    'player.off': 'Tắt',
+    'player.fullscreen': 'Toàn màn hình',
+    'player.rotate': 'Xoay',
+    'category.romance': 'Lãng mạn',
+    'category.billionaire': 'Tỷ phú',
+    'category.comedy': 'Hài',
+    'category.revenge': 'Báo thù',
+    'category.mafia': 'Mafia',
+    'category.fantasy': 'Kỳ ảo',
+    'category.werewolf': 'Người sói',
+    'category.family': 'Gia đình',
+    'category.christian': 'Cơ Đốc',
+    'category.drama': 'Tâm lý'
+  },
+  id: {
+    'nav.home': 'Beranda',
+    'nav.discover': 'Jelajahi',
+    'nav.wallet': 'Dompet',
+    'nav.me': 'Saya',
+    'profile.language': 'Bahasa',
+    'profile.getVip': 'Dapatkan VIP',
+    'profile.favorites': 'Favorit Saya',
+    'profile.history': 'Riwayat Tontonan',
+    'profile.billing': 'Tagihan',
+    'profile.help': 'Bantuan',
+    'profile.settings': 'Pengaturan',
+    'home.continueWatching': 'Lanjutkan Menonton',
+    'home.trending': 'Sedang Tren',
+    'home.new': 'Baru',
+    'home.popular': 'Populer',
+    'home.recommended': 'Rekomendasi',
+    'home.latest': 'Terbaru',
+    'home.noDramas': 'Belum ada drama',
+    'player.subtitles': 'Subtitle',
+    'player.off': 'Mati',
+    'player.fullscreen': 'Layar penuh',
+    'player.rotate': 'Putar',
+    'category.romance': 'Romansa',
+    'category.billionaire': 'Miliarder',
+    'category.comedy': 'Komedi',
+    'category.revenge': 'Balas Dendam',
+    'category.mafia': 'Mafia',
+    'category.fantasy': 'Fantasi',
+    'category.werewolf': 'Manusia Serigala',
+    'category.family': 'Keluarga',
+    'category.christian': 'Kristen',
+    'category.drama': 'Drama'
+  }
+} satisfies Record<LangCode, Record<string, string>>
+
+export type TranslationKey = keyof (typeof messages)['en']
+type ContextValue = { lang: LangCode; t: (key: TranslationKey) => string }
+const I18nContext = createContext<ContextValue | null>(null)
+
+export function getSavedLang(): LangCode {
+  if (typeof window === 'undefined') return DEFAULT_LANGUAGE
+  const pathLocale = window.location.pathname.split('/')[1]
+  if (isPublicLanguage(pathLocale)) return pathLocale
+  const stored = localStorage.getItem(STORAGE_KEY)
+  return stored && isPublicLanguage(stored) ? stored : DEFAULT_LANGUAGE
 }
 
-// Translation dictionary. English is the fallback for any missing key.
-const DICT: Record<string, Record<string, string>> = {
-  'nav.home': {
-    en: 'Home',
-    es: 'Inicio',
-    pt: 'Início',
-    fr: 'Accueil',
-    ja: 'ホーム',
-    ko: '홈',
-    vi: 'Trang chủ',
-    ms: 'Utama',
-    id: 'Beranda',
-    'zh-Hant': '首頁'
-  },
-  'nav.discover': {
-    en: 'Discover',
-    es: 'Explorar',
-    pt: 'Descobrir',
-    fr: 'Découvrir',
-    ja: '見つける',
-    ko: '발견',
-    vi: 'Khám phá',
-    ms: 'Terokai',
-    id: 'Jelajah',
-    'zh-Hant': '探索'
-  },
-  'nav.wallet': {
-    en: 'Wallet',
-    es: 'Cartera',
-    pt: 'Carteira',
-    fr: 'Portefeuille',
-    ja: 'ウォレット',
-    ko: '지갑',
-    vi: 'Ví',
-    ms: 'Dompet',
-    id: 'Dompet',
-    'zh-Hant': '錢包'
-  },
-  'nav.me': {
-    en: 'Me',
-    es: 'Yo',
-    pt: 'Eu',
-    fr: 'Moi',
-    ja: 'マイ',
-    ko: '나',
-    vi: 'Tôi',
-    ms: 'Saya',
-    id: 'Saya',
-    'zh-Hant': '我的'
-  },
+export function LanguageProvider({
+  children,
+  initialLanguage = DEFAULT_LANGUAGE
+}: {
+  children: React.ReactNode
+  initialLanguage?: LangCode
+}) {
+  const value = useMemo<ContextValue>(() => {
+    const dictionary = messages[initialLanguage] || messages.en
+    return {
+      lang: initialLanguage,
+      t: (key) => dictionary[key] || messages.en[key] || key
+    }
+  }, [initialLanguage])
 
-  'profile.signin': {
-    en: 'Tap to sign in or sign up',
-    es: 'Toca para iniciar sesión',
-    pt: 'Toque para entrar',
-    fr: 'Appuyez pour vous connecter',
-    ja: 'タップしてログイン',
-    ko: '탭하여 로그인',
-    vi: 'Chạm để đăng nhập',
-    ms: 'Ketik untuk log masuk',
-    id: 'Ketuk untuk masuk',
-    'zh-Hant': '點擊登入或註冊'
-  },
-  'profile.guest': {
-    en: 'Guest',
-    es: 'Invitado',
-    pt: 'Visitante',
-    fr: 'Invité',
-    ja: 'ゲスト',
-    ko: '게스트',
-    vi: 'Khách',
-    ms: 'Tetamu',
-    id: 'Tamu',
-    'zh-Hant': '訪客'
-  },
-  'profile.saved': {
-    en: 'Saved',
-    es: 'Guardado',
-    pt: 'Salvos',
-    fr: 'Enregistrés',
-    ja: '保存',
-    ko: '저장됨',
-    vi: 'Đã lưu',
-    ms: 'Disimpan',
-    id: 'Tersimpan',
-    'zh-Hant': '收藏'
-  },
-  'profile.watched': {
-    en: 'Watched',
-    es: 'Vistos',
-    pt: 'Assistidos',
-    fr: 'Vus',
-    ja: '視聴済み',
-    ko: '시청함',
-    vi: 'Đã xem',
-    ms: 'Ditonton',
-    id: 'Ditonton',
-    'zh-Hant': '已看'
-  },
-  'profile.coins': {
-    en: 'Coins',
-    es: 'Monedas',
-    pt: 'Moedas',
-    fr: 'Pièces',
-    ja: 'コイン',
-    ko: '코인',
-    vi: 'Xu',
-    ms: 'Syiling',
-    id: 'Koin',
-    'zh-Hant': '金幣'
-  },
-  'profile.getVip': {
-    en: 'Get VIP',
-    es: 'Obtener VIP',
-    pt: 'Obter VIP',
-    fr: 'Obtenir VIP',
-    ja: 'VIPになる',
-    ko: 'VIP 가입',
-    vi: 'Mua VIP',
-    ms: 'Dapatkan VIP',
-    id: 'Dapatkan VIP',
-    'zh-Hant': '開通 VIP'
-  },
-  'profile.favorites': {
-    en: 'My Favorites',
-    es: 'Mis favoritos',
-    pt: 'Meus favoritos',
-    fr: 'Mes favoris',
-    ja: 'お気に入り',
-    ko: '즐겨찾기',
-    vi: 'Yêu thích',
-    ms: 'Kegemaran',
-    id: 'Favorit',
-    'zh-Hant': '我的收藏'
-  },
-  'profile.history': {
-    en: 'Watch History',
-    es: 'Historial',
-    pt: 'Histórico',
-    fr: 'Historique',
-    ja: '視聴履歴',
-    ko: '시청 기록',
-    vi: 'Lịch sử xem',
-    ms: 'Sejarah Tontonan',
-    id: 'Riwayat',
-    'zh-Hant': '觀看歷史'
-  },
-  'profile.billing': {
-    en: 'Billing',
-    es: 'Facturación',
-    pt: 'Pagamentos',
-    fr: 'Facturation',
-    ja: 'お支払い',
-    ko: '결제',
-    vi: 'Thanh toán',
-    ms: 'Bil',
-    id: 'Tagihan',
-    'zh-Hant': '帳單'
-  },
-  'profile.help': {
-    en: 'Help & Feedback',
-    es: 'Ayuda',
-    pt: 'Ajuda',
-    fr: 'Aide',
-    ja: 'ヘルプ',
-    ko: '도움말',
-    vi: 'Trợ giúp',
-    ms: 'Bantuan',
-    id: 'Bantuan',
-    'zh-Hant': '幫助與反饋'
-  },
-  'profile.settings': {
-    en: 'Settings',
-    es: 'Ajustes',
-    pt: 'Configurações',
-    fr: 'Paramètres',
-    ja: '設定',
-    ko: '설정',
-    vi: 'Cài đặt',
-    ms: 'Tetapan',
-    id: 'Pengaturan',
-    'zh-Hant': '設定'
-  },
-  'profile.signout': {
-    en: 'Sign out',
-    es: 'Cerrar sesión',
-    pt: 'Sair',
-    fr: 'Déconnexion',
-    ja: 'ログアウト',
-    ko: '로그아웃',
-    vi: 'Đăng xuất',
-    ms: 'Log keluar',
-    id: 'Keluar',
-    'zh-Hant': '登出'
-  },
-  'profile.language': {
-    en: 'Language',
-    es: 'Idioma',
-    pt: 'Idioma',
-    fr: 'Langue',
-    ja: '言語',
-    ko: '언어',
-    vi: 'Ngôn ngữ',
-    ms: 'Bahasa',
-    id: 'Bahasa',
-    'zh-Hant': '語言'
-  },
-
-  'wallet.title': {
-    en: 'Wallet & VIP',
-    es: 'Cartera y VIP',
-    pt: 'Carteira e VIP',
-    fr: 'Portefeuille et VIP',
-    ja: 'ウォレットとVIP',
-    ko: '지갑 & VIP',
-    vi: 'Ví & VIP',
-    ms: 'Dompet & VIP',
-    id: 'Dompet & VIP',
-    'zh-Hant': '錢包與 VIP'
-  },
-  'wallet.earnFree': {
-    en: 'Earn Free Coins',
-    es: 'Gana monedas gratis',
-    pt: 'Ganhe moedas grátis',
-    fr: 'Gagnez des pièces',
-    ja: '無料コイン獲得',
-    ko: '무료 코인 받기',
-    vi: 'Kiếm xu miễn phí',
-    ms: 'Dapat Syiling Percuma',
-    id: 'Dapatkan Koin Gratis',
-    'zh-Hant': '免費賺金幣'
-  },
-  'wallet.subscribe': {
-    en: 'Subscribe to VIP',
-    es: 'Suscríbete a VIP',
-    pt: 'Assine o VIP',
-    fr: 'Abonnez-vous VIP',
-    ja: 'VIPに登録',
-    ko: 'VIP 구독',
-    vi: 'Đăng ký VIP',
-    ms: 'Langgan VIP',
-    id: 'Langganan VIP',
-    'zh-Hant': '訂閱 VIP'
-  },
-  'wallet.recharge': {
-    en: 'Recharge Coins',
-    es: 'Recargar monedas',
-    pt: 'Recarregar moedas',
-    fr: 'Recharger',
-    ja: 'コインをチャージ',
-    ko: '코인 충전',
-    vi: 'Nạp xu',
-    ms: 'Tambah Syiling',
-    id: 'Isi Koin',
-    'zh-Hant': '充值金幣'
-  },
-
-  'discover.recommended': {
-    en: 'Recommended',
-    es: 'Recomendado',
-    pt: 'Recomendado',
-    fr: 'Recommandé',
-    ja: 'おすすめ',
-    ko: '추천',
-    vi: 'Đề xuất',
-    ms: 'Disyorkan',
-    id: 'Rekomendasi',
-    'zh-Hant': '推薦'
-  },
-  'discover.forYou': {
-    en: 'For You',
-    es: 'Para ti',
-    pt: 'Para você',
-    fr: 'Pour vous',
-    ja: 'あなたへ',
-    ko: '추천',
-    vi: 'Dành cho bạn',
-    ms: 'Untuk Anda',
-    id: 'Untuk Anda',
-    'zh-Hant': '為你推薦'
-  },
-  'discover.new': {
-    en: 'New Releases',
-    es: 'Novedades',
-    pt: 'Lançamentos',
-    fr: 'Nouveautés',
-    ja: '新作',
-    ko: '신작',
-    vi: 'Mới ra mắt',
-    ms: 'Keluaran Baru',
-    id: 'Rilis Baru',
-    'zh-Hant': '新劇上線'
-  },
-  'discover.categories': {
-    en: 'Categories',
-    es: 'Categorías',
-    pt: 'Categorias',
-    fr: 'Catégories',
-    ja: 'カテゴリ',
-    ko: '카테고리',
-    vi: 'Thể loại',
-    ms: 'Kategori',
-    id: 'Kategori',
-    'zh-Hant': '分類'
-  },
-
-  'paywall.title': {
-    en: 'Unlock to keep watching',
-    es: 'Desbloquea para seguir viendo',
-    pt: 'Desbloqueie para continuar',
-    fr: 'Déverrouillez pour continuer',
-    ja: '続きを見るには解除',
-    ko: '계속 보려면 잠금 해제',
-    vi: 'Mở khóa để xem tiếp',
-    ms: 'Buka kunci untuk teruskan',
-    id: 'Buka untuk lanjut',
-    'zh-Hant': '解鎖以繼續觀看'
-  },
-  'paywall.useCoins': {
-    en: 'Use Coins',
-    es: 'Usar monedas',
-    pt: 'Usar moedas',
-    fr: 'Utiliser des pièces',
-    ja: 'コインを使う',
-    ko: '코인 사용',
-    vi: 'Dùng xu',
-    ms: 'Guna Syiling',
-    id: 'Pakai Koin',
-    'zh-Hant': '使用金幣'
-  },
-  'paywall.watchAd': {
-    en: 'Watch an ad',
-    es: 'Ver un anuncio',
-    pt: 'Ver um anúncio',
-    fr: 'Regarder une pub',
-    ja: '広告を見る',
-    ko: '광고 보기',
-    vi: 'Xem quảng cáo',
-    ms: 'Tonton iklan',
-    id: 'Tonton iklan',
-    'zh-Hant': '觀看廣告'
-  },
-  'paywall.free': {
-    en: 'Free',
-    es: 'Gratis',
-    pt: 'Grátis',
-    fr: 'Gratuit',
-    ja: '無料',
-    ko: '무료',
-    vi: 'Miễn phí',
-    ms: 'Percuma',
-    id: 'Gratis',
-    'zh-Hant': '免費'
-  },
-
-  'home.noDramas': {
-    en: 'No dramas yet',
-    es: 'Aún no hay series',
-    pt: 'Ainda sem séries',
-    fr: 'Pas encore de séries',
-    ja: 'まだ作品がありません',
-    ko: '아직 드라마가 없습니다',
-    vi: 'Chưa có phim',
-    ms: 'Belum ada drama',
-    id: 'Belum ada drama',
-    'zh-Hant': '尚無短劇'
-  },
-
-  'player.subtitles': {
-    en: 'Subtitles',
-    es: 'Subtítulos',
-    pt: 'Legendas',
-    fr: 'Sous-titres',
-    ja: '字幕',
-    ko: '자막',
-    vi: 'Phụ đề',
-    ms: 'Sari kata',
-    id: 'Subtitle',
-    'zh-Hant': '字幕'
-  },
-  'player.off': {
-    en: 'Off',
-    es: 'Desactivado',
-    pt: 'Desligado',
-    fr: 'Désactivé',
-    ja: 'オフ',
-    ko: '끄기',
-    vi: 'Tắt',
-    ms: 'Mati',
-    id: 'Mati',
-    'zh-Hant': '關閉'
-  }
-}
-
-type Ctx = { lang: string; setLang: (l: string) => void; t: (key: string) => string }
-const I18nContext = createContext<Ctx | null>(null)
-
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState('en')
-
-  useEffect(() => {
-    setLangState(getSavedLang())
-  }, [])
-
-  const setLang = (l: string) => {
-    setLangState(l)
-    if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, l)
-  }
-
-  const t = (key: string) => DICT[key]?.[lang] || DICT[key]?.en || key
-
-  return <I18nContext.Provider value={{ lang, setLang, t }}>{children}</I18nContext.Provider>
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 
 export function useI18n() {
-  const ctx = useContext(I18nContext)
-  if (!ctx) return { lang: 'en', setLang: () => {}, t: (k: string) => DICT[k]?.en || k }
-  return ctx
+  const context = useContext(I18nContext)
+  if (!context) {
+    return { lang: DEFAULT_LANGUAGE, t: (key: TranslationKey) => messages.en[key] || key }
+  }
+  return context
 }
 
 export function LanguageSwitcher() {
-  const { lang, setLang } = useI18n()
+  const { lang } = useI18n()
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const changeLanguage = (nextLanguage: string) => {
+    if (!isPublicLanguage(nextLanguage)) return
+    localStorage.setItem(STORAGE_KEY, nextLanguage)
+    document.cookie = `app_locale=${nextLanguage}; Path=/; Max-Age=31536000; SameSite=Lax`
+    const segments = pathname.split('/').filter(Boolean)
+    if (segments[0] && isPublicLanguage(segments[0])) segments[0] = nextLanguage
+    else segments.unshift(nextLanguage)
+    router.push(`/${segments.join('/')}`)
+  }
+
   return (
     <select
       value={lang}
-      onChange={(e) => setLang(e.target.value)}
-      className="bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-sm outline-none"
+      onChange={(event) => changeLanguage(event.target.value)}
+      aria-label="Language"
+      className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-sm outline-none"
     >
-      {LANGUAGES.map((l) => (
-        <option key={l.code} value={l.code}>
-          {l.native}
+      {LANGUAGES.map((language) => (
+        <option key={language.code} value={language.code}>
+          {language.native}
         </option>
       ))}
     </select>
