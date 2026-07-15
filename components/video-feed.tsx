@@ -1,14 +1,25 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Heart, Bookmark, Share2, List, Lock, Captions } from 'lucide-react'
+import {
+  Heart,
+  Bookmark,
+  Share2,
+  List,
+  Lock,
+  Captions,
+  Maximize,
+  RotateCw,
+  PictureInPicture,
+  Gauge
+} from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/toast'
 import { langLabel } from '@/lib/languages'
 import { getSavedLang } from '@/lib/i18n'
 import { getVideoSource } from '@/lib/video-source'
 import clsx from 'clsx'
-import type { Episode, Series } from '@/lib/types'
+import type { Episode, Series, AspectRatio } from '@/lib/types'
 
 type FeedItem = {
   episode: Episode
@@ -47,7 +58,6 @@ export function VideoFeed({
             setActiveIdx(idx)
             // only auto-play if unlocked
             if (items[idx]?.isUnlocked) {
-              v.currentTime = 0
               v.play().catch(() => {
                 /* user must interact first */
               })
@@ -63,6 +73,16 @@ export function VideoFeed({
     root.querySelectorAll('[data-slide]').forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [items])
+
+  const playNext = useCallback(
+    (idx: number) => {
+      const nextIndex = idx + 1
+      if (nextIndex >= items.length || !items[nextIndex]?.isUnlocked) return
+      const nextSlide = containerRef.current?.querySelector(`[data-idx="${nextIndex}"]`)
+      nextSlide?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
+    [items]
+  )
 
   const unlockWithCoin = useCallback(
     async (episodeId: string) => {
@@ -132,6 +152,7 @@ export function VideoFeed({
           shouldLoad={Math.abs(idx - activeIdx) <= 1}
           onUnlockCoin={() => unlockWithCoin(item.episode.id)}
           onUnlockAd={() => unlockWithAd(item.episode.id)}
+          onEnded={() => playNext(idx)}
           isVip={isVip}
           currentCoins={coins}
         />
@@ -148,6 +169,7 @@ function Slide({
   shouldLoad,
   onUnlockCoin,
   onUnlockAd,
+  onEnded,
   isVip,
   currentCoins
 }: {
@@ -158,6 +180,7 @@ function Slide({
   shouldLoad: boolean
   onUnlockCoin: () => void
   onUnlockAd: () => void
+  onEnded: () => void
   isVip: boolean
   currentCoins: number
 }) {
@@ -167,6 +190,9 @@ function Slide({
   const [showPaywall, setShowPaywall] = useState(!isUnlocked)
   const [paused, setPaused] = useState(false)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(episode.aspect_ratio || '9:16')
+  const [resumeAt, setResumeAt] = useState(0)
+  const [assetId, setAssetId] = useState<string | null>(null)
   const [subs, setSubs] = useState<{ lang: string; storage_path: string }[]>([])
   const [subMenu, setSubMenu] = useState(false)
   const [activeSub, setActiveSub] = useState<string | null>(null)
@@ -188,10 +214,15 @@ function Slide({
     })
       .then((r) => r.json())
       .then((j) => {
-        if (j.url) setVideoSrc(j.url)
+        if (j.url) {
+          setVideoSrc(j.url)
+          setAspectRatio(j.aspectRatio || episode.aspect_ratio || '9:16')
+          setResumeAt(Number(j.resumeAt) || 0)
+          setAssetId(j.assetId || null)
+        }
       })
       .catch(() => {})
-  }, [isUnlocked, shouldLoad, videoSrc, episode.id])
+  }, [isUnlocked, shouldLoad, videoSrc, episode.id, episode.aspect_ratio])
 
   // Load subtitle list for this episode
   useEffect(() => {
@@ -296,6 +327,12 @@ function Slide({
           isActive={isActive}
           className="absolute inset-0 w-full h-full object-cover"
           poster={episode.thumbnail_url || undefined}
+          episodeId={episode.id}
+          seriesId={series.id}
+          assetId={assetId}
+          aspectRatio={aspectRatio}
+          resumeAt={resumeAt}
+          onEnded={onEnded}
           tracks={subs.map((s) => ({
             key: s.lang,
             srcLang: s.lang,
@@ -504,7 +541,13 @@ function SmartVideoPlayer({
   videoRef,
   className,
   poster,
-  tracks
+  tracks,
+  episodeId,
+  seriesId,
+  assetId,
+  aspectRatio,
+  resumeAt,
+  onEnded
 }: {
   src: string
   isActive: boolean
@@ -512,6 +555,12 @@ function SmartVideoPlayer({
   className?: string
   poster?: string
   tracks: { key: string; srcLang: string; label: string; src: string }[]
+  episodeId: string
+  seriesId: string
+  assetId: string | null
+  aspectRatio: AspectRatio
+  resumeAt: number
+  onEnded: () => void
 }) {
   const source = getVideoSource(src)
 
@@ -539,6 +588,12 @@ function SmartVideoPlayer({
       isActive={isActive}
       className={className}
       poster={poster}
+      episodeId={episodeId}
+      seriesId={seriesId}
+      assetId={assetId}
+      aspectRatio={aspectRatio}
+      resumeAt={resumeAt}
+      onEnded={onEnded}
     >
       {tracks.map((track) => (
         <track
@@ -559,7 +614,13 @@ function VideoPlayer({
   videoRef,
   className,
   poster,
-  children
+  children,
+  episodeId,
+  seriesId,
+  assetId,
+  aspectRatio,
+  resumeAt,
+  onEnded
 }: {
   src: string
   isActive: boolean
@@ -567,8 +628,42 @@ function VideoPlayer({
   className?: string
   poster?: string
   children: React.ReactNode
+  episodeId: string
+  seriesId: string
+  assetId: string | null
+  aspectRatio: AspectRatio
+  resumeAt: number
+  onEnded: () => void
 }) {
   const localRef = useRef<HTMLVideoElement | null>(null)
+  const playerRef = useRef<HTMLDivElement | null>(null)
+  const gestureRef = useRef<{ x: number; y: number; time: number; volume: number } | null>(null)
+  const lastProgressRef = useRef(0)
+  const [speed, setSpeed] = useState(1)
+  const [rotation, setRotation] = useState(0)
+  const [brightness, setBrightness] = useState(1)
+  const [manualFullscreen, setManualFullscreen] = useState(false)
+
+  const saveProgress = useCallback(() => {
+    const video = localRef.current
+    if (!video || !Number.isFinite(video.currentTime)) return
+    const payload = JSON.stringify({
+      episodeId,
+      seriesId,
+      assetId,
+      progressSeconds: video.currentTime
+    })
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/progress', new Blob([payload], { type: 'application/json' }))
+    } else {
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true
+      }).catch(() => {})
+    }
+  }, [assetId, episodeId, seriesId])
 
   useEffect(() => {
     const video = localRef.current
@@ -599,6 +694,11 @@ function VideoPlayer({
             cleanup = () => hls.destroy()
             hls.loadSource(src)
             hls.attachMedia(video)
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+              if (!data.fatal) return
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
+              else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError()
+            })
           })
           .catch(() => {
             if (!disposed) video.src = src
@@ -621,21 +721,206 @@ function VideoPlayer({
     else video.pause()
   }, [isActive, src])
 
+  useEffect(() => {
+    const video = localRef.current
+    if (!video || resumeAt <= 0) return
+    const resume = () => {
+      if (resumeAt < Math.max(0, video.duration - 5)) video.currentTime = resumeAt
+    }
+    video.addEventListener('loadedmetadata', resume, { once: true })
+    return () => video.removeEventListener('loadedmetadata', resume)
+  }, [resumeAt, src])
+
+  useEffect(() => {
+    const continuePlayback = () => {
+      if (isActive) localRef.current?.play().catch(() => {})
+    }
+    window.addEventListener('online', continuePlayback)
+    window.addEventListener('pagehide', saveProgress)
+    return () => {
+      window.removeEventListener('online', continuePlayback)
+      window.removeEventListener('pagehide', saveProgress)
+    }
+  }, [isActive, saveProgress])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement) return
+      const orientation = screen.orientation as ScreenOrientation & { unlock?: () => void }
+      orientation.unlock?.()
+      setRotation(0)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const cycleSpeed = () => {
+    const speeds = [1, 1.25, 1.5, 2, 0.75]
+    const next = speeds[(speeds.indexOf(speed) + 1) % speeds.length]
+    setSpeed(next)
+    if (localRef.current) localRef.current.playbackRate = next
+  }
+
+  const togglePictureInPicture = async () => {
+    const video = localRef.current
+    if (!video || !document.pictureInPictureEnabled) return
+    if (document.pictureInPictureElement) await document.exitPictureInPicture()
+    else await video.requestPictureInPicture()
+  }
+
+  const lockLandscape = async () => {
+    if (aspectRatio !== '16:9') return
+    const orientation = screen.orientation as ScreenOrientation & {
+      lock?: (orientation: 'landscape') => Promise<void>
+    }
+    await orientation.lock?.('landscape').catch(() => {})
+  }
+
+  const toggleFullscreen = async () => {
+    const player = playerRef.current
+    const video = localRef.current as
+      (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null
+    if (!player || !video) return
+    if (manualFullscreen) {
+      setManualFullscreen(false)
+      setRotation(0)
+      return
+    }
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+      setManualFullscreen(false)
+      return
+    }
+    try {
+      await player.requestFullscreen()
+      await lockLandscape()
+    } catch {
+      if (video.webkitEnterFullscreen) video.webkitEnterFullscreen()
+      else {
+        setManualFullscreen(true)
+        if (aspectRatio === '16:9') setRotation(90)
+      }
+    }
+  }
+
+  const rotateVideo = () => {
+    setRotation((current) => (current === 0 ? 90 : current === 90 ? 270 : 0))
+  }
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const video = localRef.current
+    if (!video || (event.target as HTMLElement).closest('.no-tap')) return
+    gestureRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      time: video.currentTime,
+      volume: video.volume
+    }
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = gestureRef.current
+    const video = localRef.current
+    const player = playerRef.current
+    if (!start || !video || !player) return
+    const dx = event.clientX - start.x
+    const dy = event.clientY - start.y
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 12) {
+      video.currentTime = Math.max(0, Math.min(video.duration || Infinity, start.time + dx / 5))
+    } else if (Math.abs(dy) > 12) {
+      const delta = -dy / player.clientHeight
+      if (start.x < player.clientWidth / 2) setBrightness(Math.min(1.5, Math.max(0.35, 1 + delta)))
+      else video.volume = Math.min(1, Math.max(0, start.volume + delta))
+    }
+  }
+
+  const handleTimeUpdate = () => {
+    const video = localRef.current
+    if (!video || video.currentTime - lastProgressRef.current < 10) return
+    lastProgressRef.current = video.currentTime
+    saveProgress()
+  }
+
+  const finishEpisode = () => {
+    saveProgress()
+    onEnded()
+  }
+
   return (
-    <video
-      ref={(el) => {
-        localRef.current = el
-        videoRef(el)
+    <div
+      ref={playerRef}
+      className={clsx(className, manualFullscreen && '!fixed !inset-0 !z-[100] bg-black')}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={() => {
+        gestureRef.current = null
       }}
-      className={className}
-      playsInline
-      loop
-      preload={isActive ? 'auto' : 'metadata'}
-      crossOrigin="anonymous"
-      poster={poster}
+      style={{ touchAction: 'none' }}
+    >
+      <video
+        ref={(element) => {
+          localRef.current = element
+          videoRef(element)
+        }}
+        className={clsx(
+          'h-full w-full transition-transform duration-300',
+          aspectRatio === '16:9' ? 'object-contain' : 'object-cover'
+        )}
+        style={{
+          filter: `brightness(${brightness})`,
+          transform: `rotate(${rotation}deg) ${rotation ? 'scale(0.5625)' : ''}`
+        }}
+        playsInline
+        preload={isActive ? 'auto' : 'metadata'}
+        crossOrigin="anonymous"
+        poster={poster}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={finishEpisode}
+      >
+        {children}
+      </video>
+      {isActive && (
+        <div className="no-tap absolute right-3 top-[max(env(safe-area-inset-top),16px)] z-20 flex gap-2">
+          <PlayerButton label={`${speed}×`} onClick={cycleSpeed}>
+            <Gauge size={16} />
+          </PlayerButton>
+          <PlayerButton label="PiP" onClick={togglePictureInPicture}>
+            <PictureInPicture size={16} />
+          </PlayerButton>
+          <PlayerButton label="Rotate" onClick={rotateVideo}>
+            <RotateCw size={16} />
+          </PlayerButton>
+          <PlayerButton label="Full" onClick={toggleFullscreen}>
+            <Maximize size={16} />
+          </PlayerButton>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlayerButton({
+  label,
+  onClick,
+  children
+}: {
+  label: string
+  onClick: () => void | Promise<void>
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        void onClick()
+      }}
+      aria-label={label}
+      className="flex h-9 min-w-9 items-center justify-center gap-1 rounded-full border border-white/15 bg-black/45 px-2 text-[10px] font-bold backdrop-blur"
     >
       {children}
-    </video>
+      <span>{label}</span>
+    </button>
   )
 }
 

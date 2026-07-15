@@ -54,6 +54,17 @@ export async function POST(req: Request) {
 
     if (!allowed) return NextResponse.json({ error: 'Locked' }, { status: 403 })
 
+    let resumeAt = 0
+    if (authUser) {
+      const { data: history } = await svc
+        .from('watch_history')
+        .select('progress_seconds')
+        .eq('user_id', authUser.id)
+        .eq('episode_id', episodeId)
+        .maybeSingle()
+      resumeAt = history?.progress_seconds || 0
+    }
+
     const { data: streamAsset } = await svc
       .from('video_assets')
       .select('id, provider_asset_id, aspect_ratio')
@@ -71,13 +82,18 @@ export async function POST(req: Request) {
         url: streamHlsUrl(token),
         assetId: streamAsset.id,
         aspectRatio: streamAsset.aspect_ratio,
+        resumeAt,
         expiresIn: 900
       })
     }
 
     // If video_url is already a full https URL (e.g. external CDN), just return it.
     if (ep.video_url.startsWith('http')) {
-      return NextResponse.json({ url: ep.video_url })
+      return NextResponse.json({
+        url: ep.video_url,
+        aspectRatio: ep.aspect_ratio || '9:16',
+        resumeAt
+      })
     }
 
     // Otherwise it's a storage path in the private 'videos' bucket: sign it.
@@ -86,7 +102,11 @@ export async function POST(req: Request) {
       .createSignedUrl(ep.video_url, 60 * 60) // 1 hour
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ url: signed.signedUrl })
+    return NextResponse.json({
+      url: signed.signedUrl,
+      aspectRatio: ep.aspect_ratio || '9:16',
+      resumeAt
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to create playback URL' },
